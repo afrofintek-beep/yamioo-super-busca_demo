@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { PLACES, makePlace, DEFAULT_PLACE, type Place } from "./lib/places";
 import { resolveAfroloc } from "./lib/afroloc";
 import { runSearch, type Result, type Iny } from "./lib/search";
-import { registar } from "./lib/registar";
+import { registar, contarEntidades } from "./lib/registar";
 
 /* ---------- paleta / marca ---------- */
 const INK = "#0A0E11", INK2 = "#0E141A", CARD = "#12191F";
@@ -34,16 +34,16 @@ export default function App() {
   const [reg, setReg] = useState(false);
   const [onboard, setOnboard] = useState(true);
   const [toast, setToast] = useState("");
-  const [counter, setCounter] = useState(1340 + Math.floor(Math.random() * 400));
+  const [idx, setIdx] = useState<number | null>(null);
   const [langIdx, setLangIdx] = useState(0);
   const [phIdx, setPhIdx] = useState(0);
 
-  const STAGES = ["A interpretar a tua procura…", "A consultar o índice local (PostGIS)…", "A cruzar com a web…", "A gerar códigos AfroLoc…", "A ordenar por proximidade, confiança e frescura…"];
+  const STAGES = ["A interpretar a tua procura…", "A pesquisar o índice de entidades…", "A calcular distâncias reais…", "A gerar códigos AfroLoc…", "A ordenar por proximidade e confiança…"];
   const PLACEHOLDERS = ["Qual o melhor mercado perto de mim?", "Onde comprar fubá ao melhor preço?", "Técnico de frigoríficos no bairro", `Quem vende telha em ${place.bairro}?`, "Moto-táxi disponível agora"];
 
   // resolve o código AfroLoc real do PIN sempre que muda o lugar
   useEffect(() => { let live = true; resolveAfroloc(place).then((p) => { if (live) setPin(p); }); return () => { live = false; }; }, [place]);
-  useEffect(() => { const t = setInterval(() => setCounter((c) => c + 1 + Math.floor(Math.random() * 4)), 1500); return () => clearInterval(t); }, []);
+  useEffect(() => { contarEntidades().then(setIdx); }, []);
   useEffect(() => { const t = setInterval(() => setLangIdx((i) => (i + 1) % place.langs.length), 1700); return () => clearInterval(t); }, [place]);
   useEffect(() => { const t = setInterval(() => setPhIdx((i) => (i + 1) % PLACEHOLDERS.length), 3200); return () => clearInterval(t); }, [place]);
   useEffect(() => { if (!loading) return; let i = 0; const t = setInterval(() => { i = (i + 1) % STAGES.length; setStage(i); }, 650); return () => clearInterval(t); }, [loading]);
@@ -95,7 +95,7 @@ export default function App() {
           <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "10px 2px 18px", fontSize: 12.5, color: MUTE }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
               <span style={{ width: 6, height: 6, borderRadius: 9, background: ORANGE, animation: "ping 1.8s infinite" }} />
-              <b style={{ color: CREAM, fontVariantNumeric: "tabular-nums" }}>{counter.toLocaleString("pt-PT")}</b> a pesquisar em África agora
+              <b style={{ color: CREAM, fontVariantNumeric: "tabular-nums" }}>{idx === null ? "…" : idx.toLocaleString("pt-PT")}</b> {idx === 1 ? "negócio real no índice" : "negócios reais no índice"}
             </span>
             <span style={badge}>⚡ Modo leve</span>
           </div>
@@ -112,7 +112,7 @@ export default function App() {
           <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "10px 4px 0", fontSize: 12.5, color: MUTE }}>
             <span>fala:</span>
             <span key={langIdx} style={{ color: TEAL, fontWeight: 600, animation: "fadein .5s" }}>{place.langs[langIdx]}</span>
-            <span style={{ marginLeft: "auto", color: MUTE }}>híbrido · índice local + web</span>
+            <span style={{ marginLeft: "auto", color: MUTE }}>índice local · em crescimento</span>
           </div>
 
           <div style={{ display: "flex", gap: 8, overflowX: "auto", padding: "16px 0 4px", margin: "0 -4px" }}>
@@ -147,7 +147,7 @@ export default function App() {
                 {meta?.iny && meta.iny.produto && <InyStrip iny={meta.iny} />}
                 {shown && shown.length === 0 && <div style={{ textAlign: "center", color: MUTE, padding: "30px 0", fontSize: 14 }}>Sem entidades nesta vertical. Toca em <b style={{ color: CREAM }}>Tudo</b>.</div>}
                 <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
-                  {shown && shown.map((r, i) => <ResultCard key={r.code + i} r={r} onShare={() => { copy(r.code); flash("Código AfroLoc copiado — partilha por SMS."); }} />)}
+                  {shown && shown.map((r, i) => <ResultCard key={r.code + i} r={r} onShare={() => { copy(r.code); try { window.location.href = `sms:?&body=${encodeURIComponent(`${r.nome} — AfroLoc: ${r.code}`)}`; } catch {} flash("Código copiado — a abrir SMS no telemóvel."); }} />)}
                 </div>
                 <p style={{ textAlign: "center", color: MUTE, fontSize: 11.5, marginTop: 18, lineHeight: 1.6 }}>
                   Ranking por <b style={{ color: CREAM }}>proximidade · confiança · frescura</b>.<br />
@@ -166,7 +166,7 @@ export default function App() {
         )}
 
         {sheet && <Sheet place={place} onClose={() => setSheet(false)} onPick={(ci, bi) => { setPlace(makePlace(ci, bi)); setSheet(false); setResults(null); }} />}
-        {reg && <RegisterSheet place={place} onClose={() => setReg(false)} onDone={(m) => flash(m)} />}
+        {reg && <RegisterSheet place={place} onClose={() => setReg(false)} onDone={(m) => { flash(m); contarEntidades().then(setIdx); }} />}
         {onboard && <Onboarding place={place} code={pin.code} real={pin.real} onClose={() => setOnboard(false)} />}
         {toast && <div style={toastStyle}>{toast}</div>}
       </div>

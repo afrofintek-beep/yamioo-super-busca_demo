@@ -2,6 +2,22 @@
 // que a insere na tabela `entidades` e devolve o código AfroLoc gerado.
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const ANON = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+
+// Nº real de entidades no índice (para mostrar na app em vez de um contador falso).
+export async function contarEntidades(): Promise<number | null> {
+  if (!SUPABASE_URL || !ANON) return null;
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/entidades?select=id`, {
+      headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, Prefer: "count=exact", Range: "0-0" },
+    });
+    const cr = r.headers.get("content-range"); // ex: "0-0/6"  ou  "*/6"
+    const total = cr ? parseInt(cr.split("/")[1], 10) : NaN;
+    return isNaN(total) ? null : total;
+  } catch {
+    return null;
+  }
+}
 
 export type RegInput = {
   nome: string; tipo: string; categoria: string; descricao: string;
