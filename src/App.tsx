@@ -114,7 +114,7 @@ export default function App() {
           <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "10px 4px 0", fontSize: 12.5, color: MUTE }}>
             <span>fala:</span>
             <span key={langIdx} style={{ color: TEAL, fontWeight: 600, animation: "fadein .5s" }}>{place.langs[langIdx]}</span>
-            <span style={{ marginLeft: "auto", color: MUTE }}>índice local · em crescimento</span>
+            <span style={{ marginLeft: "auto", color: MUTE }}>híbrido · registo + web</span>
           </div>
 
           <div style={{ display: "flex", gap: 8, overflowX: "auto", padding: "16px 0 4px", margin: "0 -4px" }}>
