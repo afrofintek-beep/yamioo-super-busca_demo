@@ -61,7 +61,12 @@ Deno.serve(async (req: Request) => {
 out center ${limit};`;
 
     const ov = await fetch("https://overpass-api.de/api/interpreter", {
-      method: "POST", headers: { "Content-Type": "text/plain" }, body: ql,
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "yamioo-ingest/1.0 (afrofintek@gmail.com)",
+      },
+      body: "data=" + encodeURIComponent(ql),
     });
     if (!ov.ok) return json({ ok: false, error: `Overpass ${ov.status}` }, 200);
     const data = await ov.json();
