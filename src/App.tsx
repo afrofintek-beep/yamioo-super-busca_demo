@@ -12,12 +12,12 @@ const ORANGE = "#FF7A1A", AMBER = "#FFB347", TEAL = "#19C6AC";
 const GRAD = `linear-gradient(90deg, ${ORANGE} 0%, ${AMBER} 38%, ${TEAL} 100%)`;
 
 const VERTICALS = [
-  { id: "todos", label: "Tudo", glyph: "✦" },
-  { id: "local", label: "Locais", glyph: "📍" },
-  { id: "servico", label: "Serviços", glyph: "🔧" },
-  { id: "pessoa", label: "Pessoas", glyph: "🧑" },
-  { id: "oportunidade", label: "Oportunidades", glyph: "💼" },
-  { id: "conteudo", label: "Conteúdo", glyph: "📰" },
+  { id: "todos", label: "Tudo", icon: "sparkles" },
+  { id: "local", label: "Locais", icon: "pin" },
+  { id: "servico", label: "Serviços", icon: "tool" },
+  { id: "pessoa", label: "Pessoas", icon: "user" },
+  { id: "oportunidade", label: "Oportunidades", icon: "briefcase" },
+  { id: "conteudo", label: "Conteúdo", icon: "news" },
 ];
 const TIPO_LABEL: Record<string, string> = { local: "Local", servico: "Serviço", pessoa: "Pessoa", oportunidade: "Oportunidade", conteudo: "Conteúdo" };
 
@@ -79,8 +79,8 @@ export default function App() {
 
   return (
     <div style={{ minHeight: "100vh", background: INK, color: CREAM, fontFamily: "ui-sans-serif, -apple-system, 'Segoe UI', Roboto, sans-serif", display: "flex", justifyContent: "center" }}>
-      <div style={{ width: "100%", maxWidth: 460, position: "relative", overflow: "hidden", minHeight: "100vh", background: `radial-gradient(120% 60% at 50% -10%, rgba(255,122,26,0.22), rgba(255,179,71,0.08) 30%, transparent 60%), linear-gradient(180deg, ${INK2}, ${INK} 40%)` }}>
-        <div style={{ position: "absolute", top: -160, left: "50%", transform: "translateX(-50%)", width: 460, height: 320, background: "radial-gradient(closest-side, rgba(255,140,40,0.30), transparent)", filter: "blur(10px)", animation: "breathe 6s ease-in-out infinite", pointerEvents: "none" }} />
+      <div style={{ width: "100%", maxWidth: 460, position: "relative", overflow: "hidden", minHeight: "100vh", background: `radial-gradient(120% 60% at 50% -10%, rgba(255,122,26,0.13), rgba(255,179,71,0.05) 30%, transparent 58%), linear-gradient(180deg, ${INK2}, ${INK} 40%)` }}>
+        <div style={{ position: "absolute", top: -180, left: "50%", transform: "translateX(-50%)", width: 440, height: 300, background: "radial-gradient(closest-side, rgba(255,140,40,0.16), transparent)", filter: "blur(14px)", animation: "breathe 6s ease-in-out infinite", pointerEvents: "none" }} />
 
         <div style={{ position: "relative", padding: "22px 20px 120px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
@@ -99,14 +99,14 @@ export default function App() {
               <span style={{ width: 6, height: 6, borderRadius: 9, background: ORANGE, animation: "ping 1.8s infinite" }} />
               <b style={{ color: CREAM, fontVariantNumeric: "tabular-nums" }}>{idx === null ? "…" : idx.toLocaleString("pt-PT")}</b> {idx === 1 ? "negócio real no índice" : "negócios reais no índice"}
             </span>
-            <span style={badge}>⚡ Modo leve</span>
+            <span style={{ ...badge, display: "inline-flex", alignItems: "center", gap: 5 }}><Icon n="bolt" size={12} /> Modo leve</span>
           </div>
 
-          <div style={{ borderRadius: 18, padding: 1.5, background: GRAD, boxShadow: "0 16px 40px -18px rgba(255,122,26,0.5)" }}>
+          <div style={{ borderRadius: 18, padding: 1.5, background: GRAD, boxShadow: "0 10px 30px -20px rgba(255,122,26,0.35)" }}>
             <div style={{ background: INK2, borderRadius: 16.5, padding: "13px 14px", display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 17, opacity: 0.85 }}>🔍</span>
+              <span style={{ color: MUTE, display: "flex", opacity: 0.8 }}><Icon n="search" size={18} /></span>
               <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") search(); }} placeholder={PLACEHOLDERS[phIdx]} style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: CREAM, fontSize: 15.5 }} />
-              <button onClick={voice} title="Pesquisar por voz" style={iconBtn}>🎙️</button>
+              <button onClick={voice} title="Pesquisar por voz" style={{ ...iconBtn, display: "grid", placeItems: "center" }}><Icon n="mic" size={17} /></button>
               <button onClick={() => search()} style={{ ...goBtn, background: GRAD }}>Buscar</button>
             </div>
           </div>
@@ -117,15 +117,18 @@ export default function App() {
             <span style={{ marginLeft: "auto", color: MUTE }}>híbrido · registo + web</span>
           </div>
 
-          <div style={{ display: "flex", gap: 8, overflowX: "auto", padding: "16px 0 4px", margin: "0 -4px" }}>
+          <div style={{ position: "relative", margin: "0 -4px" }}>
+          <div style={{ display: "flex", gap: 8, overflowX: "auto", padding: "16px 4px 4px" }}>
             {VERTICALS.map((v) => {
               const on = chip === v.id;
               return (
                 <button key={v.id} onClick={() => setChip(v.id)} style={{ flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 13px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", border: `1px solid ${on ? "transparent" : LINE}`, color: on ? "#06110F" : CREAM, background: on ? GRAD : "rgba(255,255,255,0.03)" }}>
-                  <span style={{ fontSize: 13 }}>{v.glyph}</span>{v.label}
+                  <Icon n={v.icon} size={15} />{v.label}
                 </button>
               );
             })}
+          </div>
+          <div style={{ position: "absolute", right: 0, top: 16, bottom: 4, width: 32, background: `linear-gradient(90deg, transparent, ${INK})`, pointerEvents: "none" }} />
           </div>
 
           <div style={{ marginTop: 18 }}>
@@ -185,6 +188,29 @@ function Wordmark() {
   );
 }
 
+function Icon({ n, size = 16 }: { n: string; size?: number }) {
+  const paths: Record<string, React.ReactNode> = {
+    search: <><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></>,
+    mic: <><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0" /><line x1="12" y1="18" x2="12" y2="21" /></>,
+    pin: <><path d="M12 21s-6-5.2-6-10a6 6 0 0 1 12 0c0 4.8-6 10-6 10z" /><circle cx="12" cy="11" r="2" /></>,
+    tool: <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />,
+    user: <><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></>,
+    briefcase: <><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></>,
+    news: <><rect x="5" y="3" width="14" height="18" rx="2" /><line x1="8" y1="8" x2="16" y2="8" /><line x1="8" y1="12" x2="16" y2="12" /><line x1="8" y1="16" x2="13" y2="16" /></>,
+    sparkles: <path d="M12 3l1.7 4.3L18 9l-4.3 1.7L12 15l-1.7-4.3L6 9l4.3-1.7z" />,
+    bolt: <path d="M13 2L4 14h7l-1 8 9-12h-7z" />,
+    globe: <><circle cx="12" cy="12" r="9" /><line x1="3" y1="12" x2="21" y2="12" /><path d="M12 3c2.5 2.6 2.5 15.4 0 18M12 3c-2.5 2.6-2.5 15.4 0 18" /></>,
+    clock: <><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></>,
+    check: <polyline points="4 12 10 18 20 6" />,
+    tag: <><path d="M3 12V4h8l9 9-8 8z" /><circle cx="7.5" cy="7.5" r="1.5" /></>,
+  };
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", flexShrink: 0 }} aria-hidden="true">
+      {paths[n]}
+    </svg>
+  );
+}
+
 function Loading({ stage }: { stage: string }) {
   return (
     <div style={{ padding: "30px 0", textAlign: "center" }}>
@@ -198,24 +224,30 @@ function Loading({ stage }: { stage: string }) {
 
 function ResultCard({ r, onShare }: { r: Result; onShare: () => void }) {
   const tipo = TIPO_LABEL[r.tipo] || "Local";
-  const glyph = (VERTICALS.find((v) => v.id === r.tipo) || ({} as any)).glyph || "📍";
+  const ico = (VERTICALS.find((v) => v.id === r.tipo) || ({} as any)).icon || "pin";
   return (
     <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 16, padding: 14, position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: GRAD, opacity: 0.9 }} />
       <div style={{ display: "flex", gap: 12 }}>
-        <div style={{ width: 40, height: 40, flex: "0 0 auto", borderRadius: 11, display: "grid", placeItems: "center", fontSize: 19, background: "rgba(255,255,255,0.04)", border: `1px solid ${LINE}` }}>{glyph}</div>
+        <div style={{ width: 40, height: 40, flex: "0 0 auto", borderRadius: 11, display: "grid", placeItems: "center", color: TEAL, background: "rgba(255,255,255,0.04)", border: `1px solid ${LINE}` }}><Icon n={ico} size={20} /></div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <h3 style={{ margin: 0, fontSize: 15.5, fontWeight: 700, color: CREAM, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.nome}</h3>
             <span style={{ ...tag, marginLeft: "auto" }}>{tipo}</span>
           </div>
-          <div style={{ fontSize: 12, color: MUTE, marginTop: 1 }}>{r.categoria}{r.fonte === "web" ? " · 🌐 web" : " · índice local"}</div>
+          <div style={{ fontSize: 12, color: MUTE, marginTop: 1, display: "flex", alignItems: "center", gap: 5 }}>
+            <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.categoria}</span>
+            <span>·</span>
+            {r.fonte === "web"
+              ? <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon n="globe" size={11} />web</span>
+              : <span>índice local</span>}
+          </div>
           <p style={{ margin: "7px 0 0", fontSize: 13.5, color: "#C9D2DB", lineHeight: 1.45 }}>{r.descricao}</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-            <Signal label={`${r.dist.toFixed(1)} km`} icon="📍" />
-            <Signal label={`${r.conf}% confiança`} icon="✔" tone={r.conf >= 80 ? "good" : "mid"} />
-            <Signal label={r.fresh} icon="🕒" />
-            {r.preco && <Signal label={r.preco} icon="₳" tone="price" />}
+            <Signal label={`${r.dist.toFixed(1)} km`} icon="pin" />
+            <Signal label={`${r.conf}% confiança`} icon="check" tone={r.conf >= 80 ? "good" : "mid"} />
+            <Signal label={r.fresh} icon="clock" />
+            {r.preco && <Signal label={r.preco} icon="tag" tone="price" />}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 11, background: "rgba(25,198,172,0.07)", border: "1px solid rgba(25,198,172,0.22)", borderRadius: 10, padding: "7px 10px" }}>
             <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11.5, color: TEAL, letterSpacing: 0.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.code}</span>
@@ -229,7 +261,7 @@ function ResultCard({ r, onShare }: { r: Result; onShare: () => void }) {
 
 function Signal({ label, icon, tone }: { label: string; icon: string; tone?: string }) {
   const c = tone === "good" ? TEAL : tone === "price" ? AMBER : tone === "mid" ? "#C9D2DB" : MUTE;
-  return <span style={{ fontSize: 11.5, color: c, background: "rgba(255,255,255,0.04)", border: `1px solid ${LINE}`, borderRadius: 8, padding: "4px 8px", fontWeight: 600 }}>{icon} {label}</span>;
+  return <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, color: c, background: "rgba(255,255,255,0.04)", border: `1px solid ${LINE}`, borderRadius: 8, padding: "4px 8px", fontWeight: 600 }}><Icon n={icon} size={12} />{label}</span>;
 }
 
 function InyStrip({ iny }: { iny: { produto: string; mediana: string; tendencia: string } }) {
