@@ -24,6 +24,7 @@ const TIPO_LABEL: Record<string, string> = { local: "Local", servico: "Serviço"
 export default function App() {
   const [place, setPlace] = useState<Place>(DEFAULT_PLACE);
   const [pin, setPin] = useState<{ code: string; real: boolean }>({ code: "AO-LUA-TAL-TAL-GEN-G10-X6AGK-Y4A31", real: false });
+  const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Result[] | null>(null);
   const [meta, setMeta] = useState<{ interpretacao: string; lingua: string; iny: Iny } | null>(null);
@@ -42,7 +43,7 @@ export default function App() {
   const PLACEHOLDERS = ["Qual o melhor mercado perto de mim?", "Onde comprar fubá ao melhor preço?", "Técnico de frigoríficos no bairro", `Quem vende telha em ${place.bairro}?`, "Moto-táxi disponível agora"];
 
   // resolve o código AfroLoc real do PIN sempre que muda o lugar
-  useEffect(() => { let live = true; resolveAfroloc(place).then((p) => { if (live) setPin(p); }); return () => { live = false; }; }, [place]);
+  useEffect(() => { let live = true; const lp = geo ? { ...place, lat: geo.lat, lng: geo.lng } : place; resolveAfroloc(lp).then((p) => { if (live) setPin(p); }); return () => { live = false; }; }, [place, geo]);
   useEffect(() => { contarEntidades().then(setIdx); }, []);
   useEffect(() => { const t = setInterval(() => setLangIdx((i) => (i + 1) % place.langs.length), 1700); return () => clearInterval(t); }, [place]);
   useEffect(() => { const t = setInterval(() => setPhIdx((i) => (i + 1) % PLACEHOLDERS.length), 3200); return () => clearInterval(t); }, [place]);
@@ -54,11 +55,12 @@ export default function App() {
     const term = (q ?? query).trim();
     if (!term) return;
     setQuery(term); setLoading(true); setResults(null); setMeta(null); setStage(0);
-    const res = await runSearch(term, place);
+    const lp = geo ? { ...place, lat: geo.lat, lng: geo.lng } : place;
+    const res = await runSearch(term, lp);
     setMeta({ interpretacao: res.interpretacao, lingua: res.lingua, iny: res.iny });
     setResults(res.resultados);
     setLoading(false); setChip("todos");
-  }, [query, place]);
+  }, [query, place, geo]);
 
   const voice = () => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -167,7 +169,7 @@ export default function App() {
 
         {sheet && <Sheet place={place} onClose={() => setSheet(false)} onPick={(ci, bi) => { setPlace(makePlace(ci, bi)); setSheet(false); setResults(null); }} />}
         {reg && <RegisterSheet place={place} onClose={() => setReg(false)} onDone={(m) => { flash(m); contarEntidades().then(setIdx); }} />}
-        {onboard && <Onboarding place={place} code={pin.code} real={pin.real} onClose={() => setOnboard(false)} />}
+        {onboard && <Onboarding place={place} code={pin.code} real={pin.real} onGeo={(c) => setGeo(c)} onClose={() => setOnboard(false)} />}
         {toast && <div style={toastStyle}>{toast}</div>}
       </div>
     </div>
@@ -359,15 +361,26 @@ function RegisterSheet({ place, onClose, onDone }: { place: Place; onClose: () =
   );
 }
 
-function Onboarding({ place, code, real, onClose }: { place: Place; code: string; real: boolean; onClose: () => void }) {
+function Onboarding({ place, code, real, onGeo, onClose }: { place: Place; code: string; real: boolean; onGeo: (c: { lat: number; lng: number }) => void; onClose: () => void }) {
   const [step, setStep] = useState(0);
   const [sub, setSub] = useState(0);
+  const [gpsNote, setGpsNote] = useState("");
   const STEPS = ["A localizar-te…", "A obter coordenadas", "A consultar a divisão administrativa", "A gerar o código AfroLoc"];
   useEffect(() => {
     if (step !== 1) return;
     let i = 0; const t = setInterval(() => { i++; if (i >= STEPS.length) { clearInterval(t); setStep(2); } else setSub(i); }, 560);
     return () => clearInterval(t);
   }, [step]);
+
+  const askGps = () => {
+    setStep(1); setSub(0); setGpsNote("");
+    if (!navigator.geolocation) { setGpsNote("GPS indisponível — uso o bairro selecionado."); return; }
+    navigator.geolocation.getCurrentPosition(
+      (p) => onGeo({ lat: p.coords.latitude, lng: p.coords.longitude }),
+      () => setGpsNote("Sem permissão de GPS — uso o bairro selecionado."),
+      { enableHighAccuracy: true, timeout: 8000 },
+    );
+  };
   return (
     <div style={{ ...overlay, display: "grid", placeItems: "center", padding: 22 }}>
       <div style={{ width: "100%", maxWidth: 360, background: INK2, border: `1px solid ${LINE}`, borderRadius: 22, padding: 22, position: "relative", boxShadow: "0 30px 80px -30px rgba(0,0,0,0.8)" }}>
@@ -377,7 +390,7 @@ function Onboarding({ place, code, real, onClose }: { place: Place; code: string
             <div style={{ fontSize: 30, marginBottom: 6 }}>📍</div>
             <h2 style={{ margin: "4px 0 6px", fontSize: 20 }}>Onde estás?</h2>
             <p style={{ color: MUTE, fontSize: 13.5, lineHeight: 1.5, margin: "0 0 18px" }}>A Yamioo parte sempre de onde estás. Vamos resolver a tua morada num código AfroLoc.</p>
-            <button onClick={() => { setStep(1); setSub(0); }} style={{ ...goBtn, background: GRAD, width: "100%", padding: 13, fontSize: 15 }}>Permitir localização</button>
+            <button onClick={askGps} style={{ ...goBtn, background: GRAD, width: "100%", padding: 13, fontSize: 15 }}>Permitir localização</button>
             <button onClick={onClose} style={{ ...linkBtn, marginTop: 12 }}>Escolher manualmente</button>
           </div>
         )}
@@ -405,6 +418,7 @@ function Onboarding({ place, code, real, onClose }: { place: Place; code: string
               <div style={{ fontSize: 10.5, color: MUTE, letterSpacing: 1, marginBottom: 4 }}>CÓDIGO AFROLOC {real ? "· codec" : "· local"}</div>
               <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 13.5, color: TEAL, fontWeight: 600 }}>{code}</div>
             </div>
+            {gpsNote && <p style={{ color: MUTE, fontSize: 11.5, textAlign: "center", margin: "10px 0 0" }}>{gpsNote}</p>}
             <button onClick={onClose} style={{ ...goBtn, background: GRAD, width: "100%", padding: 13, fontSize: 15, marginTop: 16 }}>Continuar</button>
             <button onClick={onClose} style={{ ...linkBtn, marginTop: 10 }}>Não é aqui? Corrigir</button>
           </div>
