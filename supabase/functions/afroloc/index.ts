@@ -1,22 +1,19 @@
 // ============================================================================
 // AfroLoc — Edge Function (codec)   [Deno / Supabase]
 // ----------------------------------------------------------------------------
-// Recebe coordenadas + segmentos administrativos e devolve o código canónico.
+// Codec OFICIAL, portado fielmente de afroloc-app/src/lib/afroloc
+//   • geo.ts  §4 / §9.1  — Web Mercator (EPSG:3857) + base36 zig-zag
+//   • sdk.ts  §2.1        — encode determinista, tokens X…/Y…
+//   • engines.ts §4.1     — nomenclatura CC-PROV-MUN-COM-BAI-G10-X-Y
 //
-//   POST  { lat, lng, cc, prov, mun, zona, rural? }
-//   200   { code, grid, x, y }
+//   POST  { lat, lng, cc, prov, mun, zona, rural?, com?, bai?, seq?, registrationType? }
+//   200   { code, legacy, zone, grid, ix, iy, centroid }
 //
-// Implementação FIEL ao documento descritivo:
-//   • Projeção Web Mercator (EPSG:3857, R = 6378137)
-//   • Quantização Math.floor, grelha G = 10 m (urbano) / 25 m (rural)
-//   • Base-36, prefixo "N" para valores negativos
-//   • Hierarquia CC-PROV-MUN-ZONA-ZONA-Gnn-Xxxx-Yyyy
+// `code`    = nomenclatura (CC-PROV-MUN-COM-BAI-G10-X…-Y…[-NNNN]) quando há
+//             segmentos administrativos; senão o legacy CC-ZU-G10-X…-Y…
+// `legacy`  = código de célula standard (CC-ZU/ZR-G10-X…-Y…)
 //
-// IMPORTANTE: se o teu codec de produção tiver constantes de origem próprias
-// (offset continental), substitui este ficheiro pelo teu index.ts real — o
-// contrato de entrada/saída mantém-se igual, por isso a app continua a funcionar.
-// O ponto validado de Talatona está fixado abaixo para garantir o exemplo de
-// referência (AO-LUA-TAL-TAL-TAL-G10-358A-N251J).
+// O algoritmo é IDÊNTICO ao cliente — códigos gerados offline reconciliam no sync.
 // ============================================================================
 
 const CORS = {
@@ -25,40 +22,63 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const R = 6378137; // raio Web Mercator
+const R = 6378137.0;        // raio WGS84 (Web Mercator)
+const MAX_LAT = 85.05112878;
 
-function b36(n: number): string {
-  return (Math.abs(Math.floor(n)) % 36 ** 4).toString(36).toUpperCase().padStart(4, "0");
-}
-function mercator(lat: number, lng: number) {
-  const x = R * (lng * Math.PI / 180);
-  const y = R * Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI / 180) / 2));
+function toMercator(lat: number, lon: number) {
+  const clampLat = Math.max(-MAX_LAT, Math.min(MAX_LAT, lat));
+  const x = R * (lon * (Math.PI / 180));
+  const y = R * Math.log(Math.tan(Math.PI / 4 + (clampLat * (Math.PI / 180)) / 2));
   return { x, y };
+}
+function fromMercator(x: number, y: number) {
+  const lon = (x / R) * (180 / Math.PI);
+  const lat = (2 * Math.atan(Math.exp(y / R)) - Math.PI / 2) * (180 / Math.PI);
+  return { lat, lon };
+}
+// Índices de célula podem ser negativos → zig-zag para base36 sem sinal.
+function encodeCoord(n: number): string {
+  const u = n >= 0 ? n * 2 : -n * 2 - 1;
+  return u.toString(36).toUpperCase();
 }
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   try {
-    const { lat, lng, cc, prov, mun, zona, rural } = await req.json();
+    const b = await req.json();
+    const { lat, lng, cc, prov, mun, zona, rural, com, bai, seq } = b;
+    const registrationType = b.registrationType ?? "formal";
     if (typeof lat !== "number" || typeof lng !== "number") {
       return json({ error: "lat/lng em falta" }, 400);
     }
 
-    const G = rural ? 25 : 10;
-    let X: string, Y: string;
+    const gridSize = rural ? 25 : 10;
+    const gridTag = rural ? "G25" : "G10";
+    const zoneTag = rural ? "ZR" : "ZU";
 
-    // Ponto validado de referência (Talatona, Luanda)
-    const isRef = Math.abs(lat + 8.93295) < 1e-4 && Math.abs(lng - 13.18248) < 1e-4;
-    if (isRef) {
-      X = "358A"; Y = "N251J";
-    } else {
-      const m = mercator(lat, lng);
-      X = (m.x < 0 ? "N" : "") + b36(Math.abs(m.x) / G);
-      Y = (m.y < 0 ? "N" : "") + b36(Math.abs(m.y) / G);
+    const { x, y } = toMercator(lat, lng);
+    const ix = Math.floor(x / gridSize);
+    const iy = Math.floor(y / gridSize);
+    const xy = `X${encodeCoord(ix)}-Y${encodeCoord(iy)}`;
+
+    const CC = (cc ?? "??").toUpperCase();
+    const legacy = `${CC}-${zoneTag}-${gridTag}-${xy}`;
+
+    // Nomenclatura: requer PROV + MUN + COM (bairro → "GEN" formal / "DIG" digital).
+    const PROV = (prov ?? "").toUpperCase();
+    const MUN = (mun ?? "").toUpperCase();
+    const COM = (com ?? zona ?? "").toUpperCase();
+    const BAI = (bai ?? (registrationType === "digital" ? "DIG" : "GEN")).toUpperCase();
+
+    let code = legacy;
+    if (PROV && MUN && COM) {
+      code = [CC, PROV, MUN, COM, BAI, gridTag, xy].join("-");
+      if (typeof seq === "number") code = `${code}-${String(seq).padStart(4, "0")}`;
     }
 
-    const code = [cc ?? "??", prov ?? "??", mun ?? "??", zona ?? "??", zona ?? "??", `G${G}`, X, Y].join("-");
-    return json({ code, grid: `G${G}`, x: X, y: Y }, 200);
+    const centroid = fromMercator(ix * gridSize + gridSize / 2, iy * gridSize + gridSize / 2);
+
+    return json({ code, legacy, zone: rural ? "rural" : "urban", grid: gridTag, ix, iy, centroid }, 200);
   } catch (e) {
     return json({ error: String(e) }, 400);
   }

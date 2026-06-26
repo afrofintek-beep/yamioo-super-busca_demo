@@ -22,7 +22,7 @@ const TIPO_LABEL: Record<string, string> = { local: "Local", servico: "Serviço"
 
 export default function App() {
   const [place, setPlace] = useState<Place>(DEFAULT_PLACE);
-  const [pin, setPin] = useState<{ code: string; real: boolean }>({ code: "AO-LUA-TAL-TAL-TAL-G10-358A-N251J", real: false });
+  const [pin, setPin] = useState<{ code: string; real: boolean }>({ code: "AO-LUA-TAL-TAL-GEN-G10-X6AGK-Y4A31", real: false });
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Result[] | null>(null);
   const [meta, setMeta] = useState<{ interpretacao: string; lingua: string; iny: Iny } | null>(null);
