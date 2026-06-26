@@ -178,9 +178,9 @@ export default function App() {
 
 function Wordmark() {
   return (
-    <div style={{ display: "flex", alignItems: "baseline", gap: 1, fontWeight: 800, fontSize: 26, letterSpacing: -1 }}>
+    <div style={{ display: "flex", alignItems: "baseline", fontWeight: 800, fontSize: 27, letterSpacing: -1.2 }}>
       <span style={{ color: CREAM }}>yami</span>
-      <span style={{ background: GRAD, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent", fontWeight: 900 }}>∞</span>
+      <span style={{ background: GRAD, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent", fontWeight: 900 }}>oo</span>
     </div>
   );
 }
