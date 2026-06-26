@@ -309,7 +309,7 @@ function Sheet({ place, onClose, onPick }: { place: Place; onClose: () => void; 
 }
 
 function RegisterSheet({ place, onClose, onDone }: { place: Place; onClose: () => void; onDone: (m: string) => void }) {
-  const TIPOS = [["local", "📍 Local"], ["servico", "🔧 Serviço"], ["pessoa", "🧑 Pessoa"], ["oportunidade", "💼 Oportunidade"], ["conteudo", "📰 Conteúdo"]];
+  const TIPOS: [string, string, string][] = [["local", "Local", "pin"], ["servico", "Serviço", "tool"], ["pessoa", "Pessoa", "user"], ["oportunidade", "Oportunidade", "briefcase"], ["conteudo", "Conteúdo", "news"]];
   const [nome, setNome] = useState("");
   const [tipo, setTipo] = useState("local");
   const [categoria, setCategoria] = useState("");
@@ -357,16 +357,17 @@ function RegisterSheet({ place, onClose, onDone }: { place: Place; onClose: () =
 
             <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome (ex: Quitanda da Dona Rosa)" style={field} />
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-              {TIPOS.map(([id, lbl]) => (
-                <button key={id} onClick={() => setTipo(id)} style={{ ...chipGhost, padding: "7px 11px", fontSize: 12.5, ...(tipo === id ? { background: GRAD, color: "#06110F", borderColor: "transparent" } : {}) }}>{lbl}</button>
+              {TIPOS.map(([id, lbl, ic]) => (
+                <button key={id} onClick={() => setTipo(id)} style={{ ...chipGhost, display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 11px", fontSize: 12.5, ...(tipo === id ? { background: GRAD, color: "#06110F", borderColor: "transparent" } : {}) }}><Icon n={ic} size={14} />{lbl}</button>
               ))}
             </div>
             <input value={categoria} onChange={(e) => setCategoria(e.target.value)} placeholder="Categoria (ex: Reparação de calçado)" style={field} />
             <textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descrição curta (o que fazes / vendes)" rows={3} style={{ ...field, resize: "none", fontFamily: "inherit" }} />
             <input value={preco} onChange={(e) => setPreco(e.target.value)} placeholder={`Preço (opcional, ex: 500 ${place.curr})`} style={field} />
 
-            <button onClick={useGps} style={{ ...chipGhost, width: "100%", padding: "11px", marginBottom: 6, ...(gps === "on" ? { borderColor: TEAL, color: TEAL } : {}) }}>
-              {gps === "locating" ? "📡 A localizar…" : gps === "on" ? "✓ A usar o teu GPS" : `📍 Usar o meu GPS (ou fica em ${place.bairro})`}
+            <button onClick={useGps} style={{ ...chipGhost, width: "100%", padding: "11px", marginBottom: 6, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, ...(gps === "on" ? { borderColor: TEAL, color: TEAL } : {}) }}>
+              <Icon n={gps === "on" ? "check" : "pin"} size={15} />
+              {gps === "locating" ? "A localizar…" : gps === "on" ? "A usar o teu GPS" : `Usar o meu GPS (ou fica em ${place.bairro})`}
             </button>
             <div style={{ fontSize: 11.5, color: MUTE, marginBottom: 12 }}>Local: {place.flag} {place.country} › {place.city} › {place.bairro}</div>
 
@@ -378,7 +379,7 @@ function RegisterSheet({ place, onClose, onDone }: { place: Place; onClose: () =
           </>
         ) : (
           <div style={{ textAlign: "center", padding: "6px 4px 4px" }}>
-            <div style={{ fontSize: 30, marginBottom: 4 }}>✅</div>
+            <div style={{ color: TEAL, marginBottom: 6, display: "flex", justifyContent: "center" }}><Icon n="check" size={34} /></div>
             <h2 style={{ margin: "2px 0 6px", fontSize: 19 }}>{nome} está no mapa</h2>
             <p style={{ color: MUTE, fontSize: 13, margin: "0 0 14px" }}>Já aparece quando alguém pesquisar perto de ti. Este é o teu código AfroLoc:</p>
             <div style={{ background: "rgba(25,198,172,0.08)", border: "1px solid rgba(25,198,172,0.25)", borderRadius: 12, padding: "12px", marginBottom: 16 }}>
@@ -419,7 +420,7 @@ function Onboarding({ place, code, real, onGeo, onClose }: { place: Place; code:
         <div style={{ position: "absolute", top: -1, left: 30, right: 30, height: 2, background: GRAD, borderRadius: 9 }} />
         {step === 0 && (
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 30, marginBottom: 6 }}>📍</div>
+            <div style={{ color: ORANGE, marginBottom: 6, display: "flex", justifyContent: "center" }}><Icon n="pin" size={30} /></div>
             <h2 style={{ margin: "4px 0 6px", fontSize: 20 }}>Onde estás?</h2>
             <p style={{ color: MUTE, fontSize: 13.5, lineHeight: 1.5, margin: "0 0 18px" }}>A Yamioo parte sempre de onde estás. Vamos resolver a tua morada num código AfroLoc.</p>
             <button onClick={askGps} style={{ ...goBtn, background: GRAD, width: "100%", padding: 13, fontSize: 15 }}>Permitir localização</button>
@@ -439,7 +440,7 @@ function Onboarding({ place, code, real, onGeo, onClose }: { place: Place; code:
         {step === 2 && (
           <div>
             <div style={{ textAlign: "center", marginBottom: 14 }}>
-              <div style={{ fontSize: 26 }}>✨</div>
+              <div style={{ color: TEAL, display: "flex", justifyContent: "center" }}><Icon n="sparkles" size={26} /></div>
               <h2 style={{ margin: "2px 0 0", fontSize: 19 }}>Encontrámos-te</h2>
             </div>
             <Row k="País" v={`${place.flag} ${place.country}`} />
