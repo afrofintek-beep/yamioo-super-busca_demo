@@ -74,8 +74,9 @@ function enrich(parsed: any, query: string, place: Place): SearchResponse {
     return {
       nome: r.nome || "Sem nome", tipo, categoria: r.categoria || "",
       descricao: r.descricao || "", preco: r.preco && r.preco !== "null" ? r.preco : null,
-      dist, conf, fresh, score, fonte: i % 3 === 0 ? "web" : "local",
-      code: afrolocLocal(place, seed),
+      dist, conf, fresh, score,
+      fonte: r.fonte === "web" ? "web" : r.fonte === "local" ? "local" : (i % 3 === 0 ? "web" : "local"),
+      code: typeof r.code === "string" && r.code ? r.code : afrolocLocal(place, seed),
     };
   });
   rows.sort((a, b) => b.score - a.score);
