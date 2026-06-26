@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { PLACES, makePlace, DEFAULT_PLACE, type Place } from "./lib/places";
 import { resolveAfroloc } from "./lib/afroloc";
 import { runSearch, type Result, type Iny } from "./lib/search";
+import { registar } from "./lib/registar";
 
 /* ---------- paleta / marca ---------- */
 const INK = "#0A0E11", INK2 = "#0E141A", CARD = "#12191F";
@@ -30,6 +31,7 @@ export default function App() {
   const [stage, setStage] = useState(0);
   const [chip, setChip] = useState("todos");
   const [sheet, setSheet] = useState(false);
+  const [reg, setReg] = useState(false);
   const [onboard, setOnboard] = useState(true);
   const [toast, setToast] = useState("");
   const [counter, setCounter] = useState(1340 + Math.floor(Math.random() * 400));
@@ -156,7 +158,15 @@ export default function App() {
           </div>
         </div>
 
+        {!onboard && (
+          <button onClick={() => setReg(true)} title="Registar um negócio" style={fab}>
+            <span style={{ fontSize: 18, fontWeight: 800, lineHeight: 1 }}>＋</span>
+            <span style={{ fontSize: 13, fontWeight: 700 }}>Registar</span>
+          </button>
+        )}
+
         {sheet && <Sheet place={place} onClose={() => setSheet(false)} onPick={(ci, bi) => { setPlace(makePlace(ci, bi)); setSheet(false); setResults(null); }} />}
+        {reg && <RegisterSheet place={place} onClose={() => setReg(false)} onDone={(m) => flash(m)} />}
         {onboard && <Onboarding place={place} code={pin.code} real={pin.real} onClose={() => setOnboard(false)} />}
         {toast && <div style={toastStyle}>{toast}</div>}
       </div>
@@ -264,6 +274,91 @@ function Sheet({ place, onClose, onPick }: { place: Place; onClose: () => void; 
   );
 }
 
+function RegisterSheet({ place, onClose, onDone }: { place: Place; onClose: () => void; onDone: (m: string) => void }) {
+  const TIPOS = [["local", "📍 Local"], ["servico", "🔧 Serviço"], ["pessoa", "🧑 Pessoa"], ["oportunidade", "💼 Oportunidade"], ["conteudo", "📰 Conteúdo"]];
+  const [nome, setNome] = useState("");
+  const [tipo, setTipo] = useState("local");
+  const [categoria, setCategoria] = useState("");
+  const [descricao, setDescricao] = useState("");
+  const [preco, setPreco] = useState("");
+  const [coords, setCoords] = useState({ lat: place.lat, lng: place.lng });
+  const [gps, setGps] = useState<"idle" | "locating" | "on">("idle");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [done, setDone] = useState<string | null>(null);
+
+  const useGps = () => {
+    if (!navigator.geolocation) { setErr("GPS indisponível neste navegador."); return; }
+    setGps("locating"); setErr("");
+    navigator.geolocation.getCurrentPosition(
+      (p) => { setCoords({ lat: p.coords.latitude, lng: p.coords.longitude }); setGps("on"); },
+      () => { setGps("idle"); setErr("Não consegui obter o GPS. Uso o bairro selecionado."); },
+      { enableHighAccuracy: true, timeout: 8000 },
+    );
+  };
+
+  const submit = async () => {
+    if (!nome.trim()) { setErr("Indica o nome do negócio."); return; }
+    setBusy(true); setErr("");
+    const res = await registar({
+      nome, tipo, categoria, descricao, preco: preco.trim() || null,
+      cc: place.cc, prov: place.prov, mun: place.mun, zona: place.zona,
+      lat: coords.lat, lng: coords.lng,
+    });
+    setBusy(false);
+    if (res.ok) { setDone(res.code || ""); onDone("Registado! Já aparece nas pesquisas."); }
+    else setErr(res.error || "Não foi possível registar.");
+  };
+
+  const field: React.CSSProperties = { width: "100%", background: INK, border: `1px solid ${LINE}`, borderRadius: 12, padding: "11px 13px", color: CREAM, outline: "none", fontSize: 14, marginBottom: 10 };
+
+  return (
+    <div onClick={onClose} style={overlay}>
+      <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", left: 0, right: 0, bottom: 0, maxHeight: "90%", background: INK2, borderTopLeftRadius: 22, borderTopRightRadius: 22, border: `1px solid ${LINE}`, padding: 18, overflowY: "auto", animation: "slideup .28s ease" }}>
+        <div style={{ width: 40, height: 4, borderRadius: 9, background: LINE, margin: "0 auto 16px" }} />
+        {done === null ? (
+          <>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 2 }}>Registar um negócio</div>
+            <div style={{ fontSize: 12.5, color: MUTE, marginBottom: 14 }}>Fica no índice da Yamioo com um código AfroLoc próprio.</div>
+
+            <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome (ex: Quitanda da Dona Rosa)" style={field} />
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+              {TIPOS.map(([id, lbl]) => (
+                <button key={id} onClick={() => setTipo(id)} style={{ ...chipGhost, padding: "7px 11px", fontSize: 12.5, ...(tipo === id ? { background: GRAD, color: "#06110F", borderColor: "transparent" } : {}) }}>{lbl}</button>
+              ))}
+            </div>
+            <input value={categoria} onChange={(e) => setCategoria(e.target.value)} placeholder="Categoria (ex: Reparação de calçado)" style={field} />
+            <textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descrição curta (o que fazes / vendes)" rows={3} style={{ ...field, resize: "none", fontFamily: "inherit" }} />
+            <input value={preco} onChange={(e) => setPreco(e.target.value)} placeholder={`Preço (opcional, ex: 500 ${place.curr})`} style={field} />
+
+            <button onClick={useGps} style={{ ...chipGhost, width: "100%", padding: "11px", marginBottom: 6, ...(gps === "on" ? { borderColor: TEAL, color: TEAL } : {}) }}>
+              {gps === "locating" ? "📡 A localizar…" : gps === "on" ? "✓ A usar o teu GPS" : `📍 Usar o meu GPS (ou fica em ${place.bairro})`}
+            </button>
+            <div style={{ fontSize: 11.5, color: MUTE, marginBottom: 12 }}>Local: {place.flag} {place.country} › {place.city} › {place.bairro}</div>
+
+            {err && <div style={{ color: "#FF8A8A", fontSize: 12.5, marginBottom: 10 }}>{err}</div>}
+            <button onClick={submit} disabled={busy} style={{ ...goBtn, background: GRAD, width: "100%", padding: 13, fontSize: 15, opacity: busy ? 0.6 : 1, cursor: busy ? "default" : "pointer" }}>
+              {busy ? "A registar…" : "Registar"}
+            </button>
+            <button onClick={onClose} style={{ ...linkBtn, marginTop: 10 }}>Cancelar</button>
+          </>
+        ) : (
+          <div style={{ textAlign: "center", padding: "6px 4px 4px" }}>
+            <div style={{ fontSize: 30, marginBottom: 4 }}>✅</div>
+            <h2 style={{ margin: "2px 0 6px", fontSize: 19 }}>{nome} está no mapa</h2>
+            <p style={{ color: MUTE, fontSize: 13, margin: "0 0 14px" }}>Já aparece quando alguém pesquisar perto de ti. Este é o teu código AfroLoc:</p>
+            <div style={{ background: "rgba(25,198,172,0.08)", border: "1px solid rgba(25,198,172,0.25)", borderRadius: 12, padding: "12px", marginBottom: 16 }}>
+              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 13.5, color: TEAL, fontWeight: 600, wordBreak: "break-all" }}>{done}</div>
+            </div>
+            <button onClick={() => { try { navigator.clipboard?.writeText(done); } catch {} onDone("Código copiado."); }} style={{ ...chipGhost, width: "100%", padding: 11, marginBottom: 8 }}>Copiar código</button>
+            <button onClick={onClose} style={{ ...goBtn, background: GRAD, width: "100%", padding: 13, fontSize: 15 }}>Concluir</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function Onboarding({ place, code, real, onClose }: { place: Place; code: string; real: boolean; onClose: () => void }) {
   const [step, setStep] = useState(0);
   const [sub, setSub] = useState(0);
@@ -334,3 +429,4 @@ const miniBtn: React.CSSProperties = { background: "rgba(25,198,172,0.15)", bord
 const linkBtn: React.CSSProperties = { background: "transparent", border: "none", color: MUTE, fontSize: 13, cursor: "pointer", width: "100%", textAlign: "center" };
 const overlay: React.CSSProperties = { position: "absolute", inset: 0, background: "rgba(4,7,9,0.72)", backdropFilter: "blur(4px)", zIndex: 40 };
 const toastStyle: React.CSSProperties = { position: "absolute", bottom: 24, left: "50%", transform: "translateX(-50%)", background: "#1B242C", border: `1px solid ${LINE}`, color: CREAM, padding: "10px 16px", borderRadius: 12, fontSize: 13, zIndex: 60, boxShadow: "0 14px 40px -14px rgba(0,0,0,0.7)", maxWidth: "88%", textAlign: "center" };
+const fab: React.CSSProperties = { position: "absolute", right: 18, bottom: 22, zIndex: 30, display: "inline-flex", alignItems: "center", gap: 7, padding: "12px 16px", borderRadius: 999, border: "none", background: GRAD, color: "#06110F", cursor: "pointer", boxShadow: "0 14px 34px -12px rgba(255,122,26,0.6)" };
