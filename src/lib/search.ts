@@ -18,6 +18,21 @@ export type Iny = { produto: string; mediana: string; tendencia: string } | null
 export type SearchResponse = { interpretacao: string; lingua: string; iny: Iny; resultados: Result[] };
 
 const FRESH = ["agora mesmo", "há 2 h", "hoje", "há 1 dia", "há 3 dias", "esta semana"];
+
+// Traduz categorias vindas do OSM (inglês) para português; deixa as já-PT como estão.
+const CAT_PT: Record<string, string> = {
+  Convenience: "Mercearia", Supermarket: "Supermercado", Bakery: "Padaria", Kiosk: "Quiosque",
+  Pharmacy: "Farmácia", Bank: "Banco", Fuel: "Posto de combustível", Restaurant: "Restaurante",
+  Cafe: "Café", Bar: "Bar", "Fast food": "Comida rápida", Marketplace: "Mercado", Butcher: "Talho",
+  Greengrocer: "Frutaria", Confectionery: "Doçaria", Clothes: "Vestuário", Shoes: "Sapataria",
+  Hairdresser: "Cabeleireiro", Beauty: "Estética", "Car repair": "Oficina auto", "Car parts": "Peças auto",
+  Tyres: "Pneus", Hardware: "Ferragens", Electronics: "Eletrónica", "Mobile phone": "Telemóveis",
+  Furniture: "Mobiliário", Car: "Automóveis", Bicycle: "Bicicletas", Books: "Livraria",
+  Stationery: "Papelaria", Laundry: "Lavandaria", Optician: "Ótica", Jewelry: "Ourivesaria",
+  Florist: "Florista", Tailor: "Alfaiate", Clinic: "Clínica", Hospital: "Hospital", Doctors: "Médicos",
+  Police: "Polícia", "Post office": "Correios", "Money transfer": "Transferências", Money_transfer: "Transferências",
+};
+const traduzCat = (c: string) => CAT_PT[c] || c;
 const num = (v: any, d: number) => (typeof v === "number" && !isNaN(v) ? v : d);
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 function hash(s: string) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
@@ -72,7 +87,7 @@ function enrich(parsed: any, query: string, place: Place): SearchResponse {
     const tipo = normTipo(r.tipo);
     const score = 0.5 * (1 - Math.min(dist, 9) / 9) + 0.3 * (conf / 100) + 0.2 * freshScore;
     return {
-      nome: r.nome || "Sem nome", tipo, categoria: r.categoria || "",
+      nome: r.nome || "Sem nome", tipo, categoria: traduzCat(r.categoria || ""),
       descricao: r.descricao || "", preco: r.preco && r.preco !== "null" ? r.preco : null,
       dist, conf, fresh, score,
       fonte: r.fonte === "web" ? "web" : r.fonte === "local" ? "local" : (i % 3 === 0 ? "web" : "local"),

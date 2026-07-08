@@ -141,7 +141,7 @@ export default function App() {
                   <br />Pesquisa o mundo real à tua volta em <b style={{ color: CREAM }}>{place.bairro}</b>.
                 </p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
-                  {suggestions.map((s) => <button key={s} onClick={() => search(s)} style={chipGhost}>{s}</button>)}
+                  {suggestions.map((s) => <button key={s} className="ychip" onClick={() => search(s)} style={chipGhost}>{s}</button>)}
                 </div>
               </div>
             )}
@@ -226,7 +226,7 @@ function ResultCard({ r, onShare }: { r: Result; onShare: () => void }) {
   const tipo = TIPO_LABEL[r.tipo] || "Local";
   const ico = (VERTICALS.find((v) => v.id === r.tipo) || ({} as any)).icon || "pin";
   return (
-    <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 16, padding: 14, position: "relative", overflow: "hidden" }}>
+    <div className="ycard" style={{ background: CARD, borderRadius: 16, padding: 14, position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: GRAD, opacity: 0.9 }} />
       <div style={{ display: "flex", gap: 12 }}>
         <div style={{ width: 40, height: 40, flex: "0 0 auto", borderRadius: 11, display: "grid", placeItems: "center", color: TEAL, background: "rgba(255,255,255,0.04)", border: `1px solid ${LINE}` }}><Icon n={ico} size={20} /></div>
@@ -261,7 +261,7 @@ function ResultCard({ r, onShare }: { r: Result; onShare: () => void }) {
 
 function Signal({ label, icon, tone }: { label: string; icon: string; tone?: string }) {
   const c = tone === "good" ? TEAL : tone === "price" ? AMBER : tone === "mid" ? "#C9D2DB" : MUTE;
-  return <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, color: c, background: "rgba(255,255,255,0.04)", border: `1px solid ${LINE}`, borderRadius: 8, padding: "4px 8px", fontWeight: 600 }}><Icon n={icon} size={12} />{label}</span>;
+  return <span className="ychip" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, color: c, background: "rgba(255,255,255,0.06)", borderRadius: 8, padding: "5px 9px", fontWeight: 600 }}><Icon n={icon} size={12} />{label}</span>;
 }
 
 function InyStrip({ iny }: { iny: { produto: string; mediana: string; tendencia: string } }) {
