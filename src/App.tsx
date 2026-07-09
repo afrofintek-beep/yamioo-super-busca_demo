@@ -213,9 +213,16 @@ export default function App() {
 
 function Wordmark() {
   return (
-    <div style={{ display: "flex", alignItems: "baseline", fontWeight: 800, fontSize: 27, letterSpacing: -1.2 }}>
-      <span style={{ color: CREAM }}>yami</span>
-      <span style={{ background: GRAD, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent", fontWeight: 900 }}>oo</span>
+    <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+      <span style={{ color: CREAM, fontWeight: 800, fontSize: 27, letterSpacing: -1.2 }}>yami</span>
+      <svg width="42" height="22" viewBox="2 7 20 10" fill="none" style={{ display: "block", marginBottom: 1 }} aria-label="oo">
+        <defs>
+          <linearGradient id="yig" x1="2" y1="0" x2="22" y2="0" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stopColor={ORANGE} /><stop offset="0.5" stopColor={AMBER} /><stop offset="1" stopColor={TEAL} />
+          </linearGradient>
+        </defs>
+        <path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4Zm0 0c2 2.67 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.33-6 4Z" stroke="url(#yig)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
     </div>
   );
 }
