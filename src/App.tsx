@@ -52,6 +52,7 @@ export default function App() {
   const [chip, setChip] = useState("todos");
   const [vista, setVista] = useState<"lista" | "mapa">("lista");
   const [mapaPonto, setMapaPonto] = useState<Result | null>(null);
+  const [detalhe, setDetalhe] = useState<Result | null>(null);
   const [sheet, setSheet] = useState(false);
   const [reg, setReg] = useState(false);
   const [planos, setPlanos] = useState<{ nome: string; code: string } | null>(null);
@@ -197,7 +198,7 @@ export default function App() {
                 {vista === "mapa" && shown && shown.length > 0
                   ? <MapaResultados resultados={shown} />
                   : <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
-                      {shown && shown.map((r, i) => <ResultCard key={r.code + i} r={r} onMap={() => setMapaPonto(r)} onShare={() => { copy(r.code); try { window.location.href = `sms:?&body=${encodeURIComponent(`${r.nome} — AfroLoc: ${r.code}`)}`; } catch {} flash("Código copiado — a abrir SMS no telemóvel."); }} />)}
+                      {shown && shown.map((r, i) => <ResultCard key={r.code + i} r={r} onOpen={() => setDetalhe(r)} onMap={() => setMapaPonto(r)} onShare={() => { copy(r.code); try { window.location.href = `sms:?&body=${encodeURIComponent(`${r.nome} — AfroLoc: ${r.code}`)}`; } catch {} flash("Código copiado — a abrir SMS no telemóvel."); }} />)}
                     </div>}
                 {results.length > 0 && (
                   <p style={{ textAlign: "center", color: MUTE, fontSize: 11.5, marginTop: 18, lineHeight: 1.6 }}>
@@ -221,6 +222,7 @@ export default function App() {
         {reg && <RegisterSheet place={place} onClose={() => setReg(false)} onDone={(m) => { flash(m); contarEntidades().then(setIdx); }} onPlanos={(nome, code) => { setReg(false); setPlanos({ nome, code }); }} />}
         {planos && <PlanosSheet dados={planos} onClose={() => setPlanos(null)} onToast={flash} />}
         {mapaPonto && <MapaPonto r={mapaPonto} onClose={() => setMapaPonto(null)} />}
+        {detalhe && <DetalheNegocio r={detalhe} onClose={() => setDetalhe(null)} onMap={() => { setDetalhe(null); setMapaPonto(detalhe); }} />}
         {onboard && <Onboarding place={place} code={pin.code} real={pin.real} onGeo={(c) => setGeo(c)} onClose={() => setOnboard(false)} />}
         {toast && <div style={toastStyle}>{toast}</div>}
       </div>
@@ -346,6 +348,49 @@ function MapaPonto({ r, onClose }: { r: Result; onClose: () => void }) {
   );
 }
 
+function DetalheNegocio({ r, onClose, onMap }: { r: Result; onClose: () => void; onMap: () => void }) {
+  const linha = (label: string, val: any) => (val === null || val === undefined || val === "") ? null : (
+    <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "8px 0", borderBottom: `1px solid ${LINE}` }}>
+      <span style={{ color: MUTE, fontSize: 12.5, flex: "0 0 auto" }}>{label}</span>
+      <span style={{ fontSize: 13, fontWeight: 500, textAlign: "right", wordBreak: "break-word", color: CREAM }}>{val}</span>
+    </div>
+  );
+  const seccao = (titulo: string, filhos: React.ReactNode[]) => {
+    const arr = filhos.filter(Boolean);
+    return arr.length ? <div style={{ marginTop: 16 }}><div style={{ fontSize: 10.5, letterSpacing: 1, color: TEAL, marginBottom: 2 }}>{titulo.toUpperCase()}</div>{arr}</div> : null;
+  };
+  const wa = (r.whatsapp || r.telemovel || "").replace(/[^0-9]/g, "");
+  const act: React.CSSProperties = { ...chipGhost, display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none", fontSize: 13, padding: "9px 13px" };
+  return (
+    <div onClick={onClose} style={{ ...overlay, zIndex: 55 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", left: 0, right: 0, bottom: 0, maxHeight: "92%", overflowY: "auto", background: INK2, borderTopLeftRadius: 22, borderTopRightRadius: 22, border: `1px solid ${LINE}`, padding: 18, animation: "slideup .28s ease" }}>
+        <div style={{ width: 40, height: 4, borderRadius: 9, background: LINE, margin: "0 auto 14px" }} />
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <h2 style={{ margin: 0, fontSize: 18 }}>{r.nome}</h2>
+              {r.verificado && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10.5, fontWeight: 700, color: "#06110F", background: GRAD, borderRadius: 7, padding: "2px 7px" }}><Icon n="check" size={11} />{r.nivel === "empresa" ? "Empresa verificada" : "Verificado"}</span>}
+            </div>
+            <div style={{ fontSize: 12.5, color: MUTE, marginTop: 2 }}>{r.categoria}{r.fonte === "web" ? " · web" : " · índice local"} · {r.dist.toFixed(1)} km</div>
+          </div>
+          <button onClick={onClose} style={{ ...iconBtn, marginLeft: "auto", display: "grid", placeItems: "center" }}><Icon n="x" size={16} /></button>
+        </div>
+        {r.descricao && <p style={{ fontSize: 13.5, color: "#C9D2DB", lineHeight: 1.5, margin: "8px 0 0" }}>{r.descricao}</p>}
+        <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
+          {wa && <a href={`https://wa.me/${wa}`} target="_blank" rel="noreferrer" style={{ ...act, borderColor: "rgba(25,198,172,0.4)", color: TEAL }}><Icon n="globe" size={14} />WhatsApp</a>}
+          {r.telemovel && <a href={`tel:${r.telemovel}`} style={act}>Ligar</a>}
+          <button onClick={onMap} style={act}><Icon n="pin" size={14} />Ver no mapa</button>
+        </div>
+        {seccao("Contacto", [linha("Responsável", r.responsavel), linha("Telemóvel", r.telemovel), linha("WhatsApp", r.whatsapp), linha("Email", r.email), linha("Website", r.website), linha("Horário", r.horario), linha("Desde", r.desde)])}
+        {seccao("Localização", [linha("Código AFROLOC", <span style={{ fontFamily: "ui-monospace, monospace", color: TEAL, fontSize: 12 }}>{r.code}</span>), linha("Município · Zona", (r.mun || r.zona) ? `${r.mun || "—"} · ${r.zona || "—"}` : null), linha("Distância", `${r.dist.toFixed(1)} km`)])}
+        {seccao("Registo formal", [linha("Perfil", r.perfil === "formal" ? "Empresa / Formal" : r.perfil === "informal" ? "Informal" : null), linha("NIF", r.nif), linha("Forma jurídica", r.forma_juridica), linha("Registo comercial", r.registo_comercial), linha("Alvará", r.alvara), linha("Representante", r.rep_legal_nome), linha("Setor", r.setor), linha("Nº de trabalhadores", r.n_trabalhadores), linha("Endereço fiscal", r.endereco_fiscal)])}
+        {seccao("Confiança & fonte", [linha("Confiança", `${r.conf}%`), linha("Validação", r.validacao === "verificado_empresa" ? "Empresa verificada" : r.validacao === "verificado_comunidade" ? "Verificado pela comunidade" : r.validacao === "pendente" ? "Pendente de validação" : null), linha("Frescura", r.fresh), linha("Fonte", r.fonte === "web" ? "Web (OpenStreetMap)" : "Registo / índice local")])}
+        <button onClick={onClose} style={{ ...linkBtn, marginTop: 16 }}>Fechar</button>
+      </div>
+    </div>
+  );
+}
+
 function MapaResultados({ resultados }: { resultados: Result[] }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -432,7 +477,7 @@ function Loading({ stage }: { stage: string }) {
   );
 }
 
-function ResultCard({ r, onMap, onShare }: { r: Result; onMap: () => void; onShare: () => void }) {
+function ResultCard({ r, onOpen, onMap, onShare }: { r: Result; onOpen: () => void; onMap: () => void; onShare: () => void }) {
   const tipo = TIPO_LABEL[r.tipo] || "Local";
   const ico = (VERTICALS.find((v) => v.id === r.tipo) || ({} as any)).icon || "pin";
   return (
@@ -442,7 +487,7 @@ function ResultCard({ r, onMap, onShare }: { r: Result; onMap: () => void; onSha
         <div style={{ width: 40, height: 40, flex: "0 0 auto", borderRadius: 11, display: "grid", placeItems: "center", color: TEAL, background: "rgba(255,255,255,0.04)", border: `1px solid ${LINE}` }}><Icon n={ico} size={20} /></div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <h3 style={{ margin: 0, fontSize: 15.5, fontWeight: 700, color: CREAM, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.nome}</h3>
+            <h3 onClick={onOpen} style={{ margin: 0, fontSize: 15.5, fontWeight: 700, color: CREAM, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", cursor: "pointer" }}>{r.nome}</h3>
             {r.verificado && <span title="Negócio verificado" style={{ flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10.5, fontWeight: 700, color: "#06110F", background: GRAD, borderRadius: 7, padding: "2px 6px" }}><Icon n="check" size={11} />Verificado</span>}
             <span style={{ ...tag, marginLeft: "auto" }}>{tipo}</span>
           </div>

@@ -98,6 +98,14 @@ Deno.serve(async (req: Request) => {
         distancia_km: Math.round(dist * 10) / 10, confianca: conf,
         frescura: frescura(e.atualizado_em), code: e.afroloc ?? afrolocCode(e),
         fonte: e.fonte === "web" ? "web" : "local", verificado, _score: score,
+        // ficha descritiva (registo formal adotado na Yamioo)
+        perfil: e.perfil ?? null, validacao: e.validacao ?? null, nivel: e.nivel ?? null,
+        responsavel: e.responsavel ?? null, telemovel: e.telemovel ?? null, whatsapp: e.whatsapp ?? null,
+        email: e.email ?? null, website: e.website ?? null, horario: e.horario ?? null, desde: e.desde ?? null,
+        nif: e.nif ?? null, forma_juridica: e.forma_juridica ?? null, registo_comercial: e.registo_comercial ?? null,
+        alvara: e.alvara ?? null, rep_legal_nome: e.rep_legal_nome ?? null, setor: e.setor ?? null,
+        n_trabalhadores: e.n_trabalhadores ?? null, endereco_fiscal: e.endereco_fiscal ?? null,
+        prov: e.prov ?? null, mun: e.mun ?? null, zona: e.zona ?? null,
       };
     }).sort((a, b) => b._score - a._score).slice(0, 6);
 

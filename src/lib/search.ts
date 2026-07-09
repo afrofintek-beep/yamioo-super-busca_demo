@@ -13,6 +13,14 @@ export type Result = {
   nome: string; tipo: Tipo; categoria: string; descricao: string;
   preco: string | null; dist: number; conf: number; fresh: string;
   score: number; fonte: "web" | "local"; code: string; verificado?: boolean;
+  // ficha descritiva (registo formal)
+  perfil?: string | null; validacao?: string | null; nivel?: string | null;
+  responsavel?: string | null; telemovel?: string | null; whatsapp?: string | null;
+  email?: string | null; website?: string | null; horario?: string | null; desde?: number | null;
+  nif?: string | null; forma_juridica?: string | null; registo_comercial?: string | null;
+  alvara?: string | null; rep_legal_nome?: string | null; setor?: string | null;
+  n_trabalhadores?: number | null; endereco_fiscal?: string | null;
+  prov?: string | null; mun?: string | null; zona?: string | null;
 };
 export type Iny = { produto: string; mediana: string; tendencia: string } | null;
 export type SearchResponse = { interpretacao: string; lingua: string; iny: Iny; resultados: Result[] };
@@ -85,6 +93,13 @@ function enrich(parsed: any, query: string, place: Place): SearchResponse {
       fonte: r.fonte === "web" ? "web" : r.fonte === "local" ? "local" : (i % 3 === 0 ? "web" : "local"),
       code: typeof r.code === "string" && r.code ? r.code : afrolocLocal(place, seed),
       verificado: !!r.verificado,
+      perfil: r.perfil ?? null, validacao: r.validacao ?? null, nivel: r.nivel ?? null,
+      responsavel: r.responsavel ?? null, telemovel: r.telemovel ?? null, whatsapp: r.whatsapp ?? null,
+      email: r.email ?? null, website: r.website ?? null, horario: r.horario ?? null, desde: r.desde ?? null,
+      nif: r.nif ?? null, forma_juridica: r.forma_juridica ?? null, registo_comercial: r.registo_comercial ?? null,
+      alvara: r.alvara ?? null, rep_legal_nome: r.rep_legal_nome ?? null, setor: r.setor ?? null,
+      n_trabalhadores: r.n_trabalhadores ?? null, endereco_fiscal: r.endereco_fiscal ?? null,
+      prov: r.prov ?? null, mun: r.mun ?? null, zona: r.zona ?? null,
     };
   });
   rows.sort((a, b) => b.score - a.score);
