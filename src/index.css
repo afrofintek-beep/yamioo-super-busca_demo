@@ -17,3 +17,8 @@ input::placeholder { color: #5C6670; }
 .ycard:hover { border-color: rgba(25,198,172,0.35); transform: translateY(-1px); box-shadow: 0 10px 30px -18px rgba(0,0,0,0.7); }
 .ychip { transition: transform .12s ease, background .15s ease; }
 .ychip:hover { transform: translateY(-1px); }
+
+.wrap { width: 100%; max-width: 460px; }
+@media (min-width: 900px) { .wrap { max-width: 720px; } }
+.tile { transition: border-color .15s ease, transform .12s ease, background .15s ease; }
+.tile:hover { border-color: rgba(25,198,172,0.4); transform: translateY(-1px); background: rgba(25,198,172,0.06); }

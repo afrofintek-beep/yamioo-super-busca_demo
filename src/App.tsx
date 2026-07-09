@@ -24,6 +24,16 @@ const VERTICALS = [
 ];
 const TIPO_LABEL: Record<string, string> = { local: "Local", servico: "Serviço", pessoa: "Pessoa", oportunidade: "Oportunidade", conteudo: "Conteúdo" };
 
+// Atalhos de descoberta — muitas escolhas de busca à primeira vista (esp. desktop).
+const EXPLORAR: { label: string; icon: string }[] = [
+  { label: "Mercado", icon: "pin" }, { label: "Farmácia", icon: "pin" }, { label: "Banco", icon: "pin" },
+  { label: "Restaurante", icon: "pin" }, { label: "Padaria", icon: "pin" }, { label: "Quitanda", icon: "pin" },
+  { label: "Kinguila", icon: "pin" }, { label: "Sapateiro", icon: "tool" }, { label: "Alfaiate", icon: "tool" },
+  { label: "Canalizador", icon: "tool" }, { label: "Eletricista", icon: "tool" }, { label: "Mecânico", icon: "tool" },
+  { label: "Mototáxi", icon: "tool" }, { label: "Informático", icon: "tool" }, { label: "Cabeleireiro", icon: "user" },
+  { label: "Barbearia", icon: "pin" },
+];
+
 export default function App() {
   const [place, setPlace] = useState<Place>(DEFAULT_PLACE);
   const [pin, setPin] = useState<{ code: string; real: boolean }>({ code: "AO-LUA-TAL-TAL-GEN-G10-X6AGK-Y4A31", real: false });
@@ -84,7 +94,7 @@ export default function App() {
 
   return (
     <div style={{ minHeight: "100vh", background: INK, color: CREAM, fontFamily: "ui-sans-serif, -apple-system, 'Segoe UI', Roboto, sans-serif", display: "flex", justifyContent: "center" }}>
-      <div style={{ width: "100%", maxWidth: 460, position: "relative", overflow: "hidden", minHeight: "100vh", background: `radial-gradient(120% 60% at 50% -10%, rgba(255,122,26,0.13), rgba(255,179,71,0.05) 30%, transparent 58%), linear-gradient(180deg, ${INK2}, ${INK} 40%)` }}>
+      <div className="wrap" style={{ position: "relative", overflow: "hidden", minHeight: "100vh", background: `radial-gradient(120% 60% at 50% -10%, rgba(255,122,26,0.13), rgba(255,179,71,0.05) 30%, transparent 58%), linear-gradient(180deg, ${INK2}, ${INK} 40%)` }}>
         <div style={{ position: "absolute", top: -180, left: "50%", transform: "translateX(-50%)", width: 440, height: 300, background: "radial-gradient(closest-side, rgba(255,140,40,0.16), transparent)", filter: "blur(14px)", animation: "breathe 6s ease-in-out infinite", pointerEvents: "none" }} />
 
         <div style={{ position: "relative", padding: "22px 20px 120px" }}>
@@ -148,6 +158,16 @@ export default function App() {
                 <div style={{ fontSize: 11.5, color: TEAL, letterSpacing: 0.3, marginBottom: 10, display: "inline-flex", alignItems: "center", gap: 6 }}><Icon n="check" size={13} />já no mapa perto de ti</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
                   {suggestions.map((s) => <button key={s} className="ychip" onClick={() => search(s)} style={chipGhost}>{s}</button>)}
+                </div>
+                <div style={{ marginTop: 28, textAlign: "left" }}>
+                  <div style={{ fontSize: 12.5, color: MUTE, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}><Icon n="sparkles" size={13} />Explorar por atividade</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 8 }}>
+                    {EXPLORAR.map((a) => (
+                      <button key={a.label} className="tile" onClick={() => search(a.label)} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "12px 13px", borderRadius: 12, border: `1px solid ${LINE}`, background: "rgba(255,255,255,0.03)", color: CREAM, cursor: "pointer", fontSize: 13.5, fontWeight: 500, textAlign: "left" }}>
+                        <span style={{ color: TEAL, display: "flex" }}><Icon n={a.icon} size={16} /></span>{a.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
