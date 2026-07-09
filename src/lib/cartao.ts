@@ -52,7 +52,19 @@ export async function gerarCartao(nome: string, code: string): Promise<Blob> {
   ctx.font = "800 44px ui-sans-serif, system-ui, sans-serif";
   ctx.fillStyle = CREAM; ctx.fillText("yami", PAD, 100);
   const wm = ctx.measureText("yami").width;
-  ctx.fillStyle = AMBER; ctx.fillText("oo", PAD + wm, 100);
+  // infinito (∞ = oo) no gradiente da marca — igual à app
+  const cx = PAD + wm + 46, cy = 84, hw = 42, lh = 18, k = hw * 0.3;
+  const ig = ctx.createLinearGradient(cx - hw, 0, cx + hw, 0);
+  ig.addColorStop(0, "#FF7A1A"); ig.addColorStop(0.5, AMBER); ig.addColorStop(1, TEAL);
+  ctx.strokeStyle = ig; ctx.lineWidth = 9; ctx.lineCap = "round"; ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.moveTo(cx - hw, cy);
+  ctx.bezierCurveTo(cx - hw, cy - lh, cx - k, cy - lh, cx, cy);
+  ctx.bezierCurveTo(cx + k, cy + lh, cx + hw, cy + lh, cx + hw, cy);
+  ctx.bezierCurveTo(cx + hw, cy - lh, cx + k, cy - lh, cx, cy);
+  ctx.bezierCurveTo(cx - k, cy + lh, cx - hw, cy + lh, cx - hw, cy);
+  ctx.closePath();
+  ctx.stroke();
 
   ctx.font = "600 14px ui-sans-serif, system-ui"; ctx.fillStyle = MUTE;
   ctx.fillText("MORADA DIGITAL AFROLOC", PAD, 138);
