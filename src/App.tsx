@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import { PLACES, makePlace, DEFAULT_PLACE, type Place } from "./lib/places";
 import { resolveAfroloc } from "./lib/afroloc";
 import { runSearch, type Result, type Iny } from "./lib/search";
-import { registar, contarEntidades, avisarme } from "./lib/registar";
+import { registar, contarEntidades, avisarme, subscrever } from "./lib/registar";
+import { PLANOS, CICLOS, precoTotal, akz, type PlanoId, type Ciclo } from "./lib/planos";
 import { gerarCartao, deeplink, baixar } from "./lib/cartao";
 import { atividadesPara } from "./lib/atividades";
 
@@ -35,6 +36,7 @@ export default function App() {
   const [chip, setChip] = useState("todos");
   const [sheet, setSheet] = useState(false);
   const [reg, setReg] = useState(false);
+  const [planos, setPlanos] = useState<{ nome: string; code: string } | null>(null);
   const [onboard, setOnboard] = useState(true);
   const [toast, setToast] = useState("");
   const [idx, setIdx] = useState<number | null>(null);
@@ -178,7 +180,8 @@ export default function App() {
         )}
 
         {sheet && <Sheet place={place} onClose={() => setSheet(false)} onPick={(ci, bi) => { setPlace(makePlace(ci, bi)); setSheet(false); setResults(null); }} />}
-        {reg && <RegisterSheet place={place} onClose={() => setReg(false)} onDone={(m) => { flash(m); contarEntidades().then(setIdx); }} />}
+        {reg && <RegisterSheet place={place} onClose={() => setReg(false)} onDone={(m) => { flash(m); contarEntidades().then(setIdx); }} onPlanos={(nome, code) => { setReg(false); setPlanos({ nome, code }); }} />}
+        {planos && <PlanosSheet dados={planos} onClose={() => setPlanos(null)} onToast={flash} />}
         {onboard && <Onboarding place={place} code={pin.code} real={pin.real} onGeo={(c) => setGeo(c)} onClose={() => setOnboard(false)} />}
         {toast && <div style={toastStyle}>{toast}</div>}
       </div>
@@ -357,7 +360,72 @@ function SemResultados({ query, place, onRegistar, onToast }: { query: string; p
   );
 }
 
-function RegisterSheet({ place, onClose, onDone }: { place: Place; onClose: () => void; onDone: (m: string) => void }) {
+function PlanosSheet({ dados, onClose, onToast }: { dados: { nome: string; code: string }; onClose: () => void; onToast: (m: string) => void }) {
+  const [plano, setPlano] = useState<PlanoId>("verificado");
+  const [ciclo, setCiclo] = useState<Ciclo>("anual");
+  const [contacto, setContacto] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [feito, setFeito] = useState(false);
+  const total = precoTotal(plano, ciclo);
+
+  const submeter = async () => {
+    if (!contacto.trim()) { onToast("Indica um contacto."); return; }
+    setBusy(true);
+    const res = await subscrever({ plano, ciclo, nome: dados.nome, contacto: contacto.trim(), afroloc: dados.code });
+    setBusy(false);
+    if (res.ok) { setFeito(true); onToast("Pedido recebido! Entramos em contacto para ativar."); }
+    else onToast(res.error || "Não consegui registar o pedido.");
+  };
+
+  const field: React.CSSProperties = { width: "100%", background: INK, border: `1px solid ${LINE}`, borderRadius: 12, padding: "11px 13px", color: CREAM, outline: "none", fontSize: 14 };
+
+  return (
+    <div onClick={onClose} style={overlay}>
+      <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", left: 0, right: 0, bottom: 0, maxHeight: "92%", background: INK2, borderTopLeftRadius: 22, borderTopRightRadius: 22, border: `1px solid ${LINE}`, padding: 18, overflowY: "auto", animation: "slideup .28s ease" }}>
+        <div style={{ width: 40, height: 4, borderRadius: 9, background: LINE, margin: "0 auto 16px" }} />
+        {!feito ? (
+          <>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 2 }}>Destaca o teu negócio</div>
+            <div style={{ fontSize: 12.5, color: MUTE, marginBottom: 14 }}>Selo ✓ Verificado, topo do ranking e campanhas para <b style={{ color: CREAM }}>{dados.nome}</b>.</div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              {(Object.keys(PLANOS) as PlanoId[]).map((p) => (
+                <button key={p} onClick={() => setPlano(p)} style={{ flex: 1, textAlign: "left", padding: "11px 12px", borderRadius: 13, cursor: "pointer", border: `1px solid ${plano === p ? TEAL : LINE}`, background: plano === p ? "rgba(25,198,172,0.08)" : "rgba(255,255,255,0.02)", color: CREAM }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700 }}>{PLANOS[p].nome}</div>
+                  <div style={{ fontSize: 11.5, color: MUTE, marginTop: 2 }}>{akz(PLANOS[p].mensal)}/mês</div>
+                </button>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+              {CICLOS.map((c) => (
+                <button key={c.id} onClick={() => setCiclo(c.id)} style={{ ...chipGhost, flex: 1, padding: "8px 4px", fontSize: 12.5, ...(ciclo === c.id ? { background: GRAD, color: "#06110F", borderColor: "transparent" } : {}) }}>{c.nome}{c.desconto ? ` −${c.desconto * 100}%` : ""}</button>
+              ))}
+            </div>
+            <div style={{ fontSize: 12.5, color: MUTE, marginBottom: 10, lineHeight: 1.9 }}>
+              {PLANOS[plano].da.map((d) => <div key={d}><span style={{ color: TEAL }}>✓</span> {d}</div>)}
+            </div>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "10px 2px", marginBottom: 12, borderTop: `1px solid ${LINE}` }}>
+              <span style={{ color: MUTE, fontSize: 13 }}>Total {CICLOS.find((c) => c.id === ciclo)!.nome.toLowerCase()}</span>
+              <span style={{ fontSize: 20, fontWeight: 800, color: CREAM }}>{akz(total)}</span>
+            </div>
+            <input value={contacto} onChange={(e) => setContacto(e.target.value)} placeholder="Telemóvel ou email para ativar" style={{ ...field, marginBottom: 10 }} />
+            <button onClick={submeter} disabled={busy} style={{ ...goBtn, background: GRAD, width: "100%", padding: 13, fontSize: 15, opacity: busy ? 0.6 : 1 }}>{busy ? "A enviar…" : "Quero destacar-me"}</button>
+            <button onClick={onClose} style={{ ...linkBtn, marginTop: 10 }}>Agora não</button>
+            <div style={{ fontSize: 11, color: MUTE, textAlign: "center", marginTop: 10, lineHeight: 1.5 }}>Pagamento por Multicaixa · o selo ativa após confirmação.<br />O selo também se ganha por validação da comunidade.</div>
+          </>
+        ) : (
+          <div style={{ textAlign: "center", padding: "8px 4px" }}>
+            <div style={{ color: TEAL, marginBottom: 8, display: "flex", justifyContent: "center" }}><Icon n="check" size={34} /></div>
+            <h2 style={{ margin: "2px 0 6px", fontSize: 19 }}>Pedido recebido</h2>
+            <p style={{ color: MUTE, fontSize: 13, margin: "0 0 16px", lineHeight: 1.6 }}>Vamos contactar-te para ativar o <b style={{ color: CREAM }}>{PLANOS[plano].nome}</b> e emitir a referência Multicaixa. O selo ✓ aparece após o pagamento.</p>
+            <button onClick={onClose} style={{ ...goBtn, background: GRAD, width: "100%", padding: 13, fontSize: 15 }}>Concluir</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RegisterSheet({ place, onClose, onDone, onPlanos }: { place: Place; onClose: () => void; onDone: (m: string) => void; onPlanos: (nome: string, code: string) => void }) {
   const TIPOS: [string, string, string][] = [["local", "Local", "pin"], ["servico", "Serviço", "tool"], ["pessoa", "Pessoa", "user"], ["oportunidade", "Oportunidade", "briefcase"], ["conteudo", "Conteúdo", "news"]];
   const [nome, setNome] = useState("");
   const [tipo, setTipo] = useState("local");
@@ -479,6 +547,7 @@ function RegisterSheet({ place, onClose, onDone }: { place: Place; onClose: () =
               <button onClick={guardarCartao} style={{ ...chipGhost, flex: 1, padding: 11, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon n="download" size={14} />Guardar</button>
               <button onClick={() => { try { navigator.clipboard?.writeText(done); } catch {} onDone("Código copiado."); }} style={{ ...chipGhost, flex: 1, padding: 11, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon n="copy" size={14} />Copiar</button>
             </div>
+            <button onClick={() => onPlanos(nome, done)} style={{ width: "100%", padding: "10px", marginBottom: 6, borderRadius: 12, cursor: "pointer", background: "rgba(25,198,172,0.08)", border: "1px solid rgba(25,198,172,0.3)", color: TEAL, fontSize: 13.5, fontWeight: 600, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}><Icon n="check" size={15} />Quero o selo ✓ e destaque</button>
             <button onClick={onClose} style={{ ...linkBtn }}>Concluir</button>
           </div>
         )}
