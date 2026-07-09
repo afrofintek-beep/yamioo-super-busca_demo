@@ -58,22 +58,14 @@ export async function runSearch(query: string, place: Place): Promise<SearchResp
       parsed = tolerantParse(data.text || "");
     } catch { parsed = null; }
   }
-  if (!parsed || !parsed.resultados || !parsed.resultados.length) parsed = fallback(query, place);
+  // NUNCA inventar. Sem função ou sem ligação → resposta vazia honesta.
+  // Se a função respondeu com 0 resultados, respeitamos (não há nada real ainda).
+  if (!parsed) parsed = { interpretacao: "", lingua_detectada: place.langs[0], iny: null, resultados: [] };
+  if (!Array.isArray(parsed.resultados)) parsed.resultados = [];
+  if (!parsed.resultados.length && !parsed.interpretacao) {
+    parsed.interpretacao = `Ainda não há nada real registado para "${query}" em ${place.bairro}.`;
+  }
   return enrich(parsed, query, place);
-}
-
-function fallback(query: string, place: Place) {
-  return {
-    interpretacao: `Resultados locais para "${query}" em ${place.bairro} (modo resiliente).`,
-    lingua_detectada: place.langs[0],
-    iny: null,
-    resultados: [
-      { nome: `Banca de ${query}`, tipo: "local", categoria: "Mercado informal", descricao: `Vendedor de ${query} no mercado do bairro.`, preco: place.curr === "AKZ" ? "2.500 AKZ" : null },
-      { nome: "Zé do Conserto", tipo: "servico", categoria: "Reparações", descricao: `Faz e arranja relacionado com "${query}". Atende ao domicílio.`, preco: null },
-      { nome: `Ponto ${place.bairro}`, tipo: "local", categoria: "Comércio de rua", descricao: `Vendedores de ${query} concentrados nesta zona.`, preco: null },
-      { nome: "Oportunidade local", tipo: "oportunidade", categoria: "Trabalho", descricao: `Procura-se ajudante ligado a "${query}" perto de ti.`, preco: null },
-    ],
-  };
 }
 
 function enrich(parsed: any, query: string, place: Place): SearchResponse {

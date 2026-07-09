@@ -151,14 +151,22 @@ export default function App() {
               <div>
                 {meta?.interpretacao && <p style={{ fontSize: 12.5, color: MUTE, margin: "0 2px 12px", lineHeight: 1.5 }}><span style={{ color: TEAL }}>⟶ </span>{meta.interpretacao}</p>}
                 {meta?.iny && meta.iny.produto && <InyStrip iny={meta.iny} />}
-                {shown && shown.length === 0 && <div style={{ textAlign: "center", color: MUTE, padding: "30px 0", fontSize: 14 }}>Sem entidades nesta vertical. Toca em <b style={{ color: CREAM }}>Tudo</b>.</div>}
+                {results.length === 0 && (
+                  <div style={{ textAlign: "center", padding: "24px 8px" }}>
+                    <div style={{ color: MUTE, fontSize: 14, lineHeight: 1.6, marginBottom: 14 }}>Ainda não há nada real registado para <b style={{ color: CREAM }}>"{query}"</b> em {place.bairro}.<br />Sê o primeiro — o teu negócio fica no mapa com endereço próprio.</div>
+                    <button onClick={() => setReg(true)} style={{ ...goBtn, background: GRAD, padding: "11px 18px", display: "inline-flex", alignItems: "center", gap: 8 }}><Icon n="pin" size={16} />Registar o primeiro</button>
+                  </div>
+                )}
+                {results.length > 0 && shown && shown.length === 0 && <div style={{ textAlign: "center", color: MUTE, padding: "30px 0", fontSize: 14 }}>Sem entidades nesta vertical. Toca em <b style={{ color: CREAM }}>Tudo</b>.</div>}
                 <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
                   {shown && shown.map((r, i) => <ResultCard key={r.code + i} r={r} onShare={() => { copy(r.code); try { window.location.href = `sms:?&body=${encodeURIComponent(`${r.nome} — AfroLoc: ${r.code}`)}`; } catch {} flash("Código copiado — a abrir SMS no telemóvel."); }} />)}
                 </div>
-                <p style={{ textAlign: "center", color: MUTE, fontSize: 11.5, marginTop: 18, lineHeight: 1.6 }}>
-                  Ranking por <b style={{ color: CREAM }}>proximidade · confiança · frescura</b>.<br />
-                  Cada ponto tem um código AfroLoc — partilhável por SMS, mesmo offline.
-                </p>
+                {results.length > 0 && (
+                  <p style={{ textAlign: "center", color: MUTE, fontSize: 11.5, marginTop: 18, lineHeight: 1.6 }}>
+                    Ranking por <b style={{ color: CREAM }}>proximidade · confiança · frescura</b>.<br />
+                    Cada ponto tem um código AfroLoc — partilhável por SMS, mesmo offline.
+                  </p>
+                )}
               </div>
             )}
           </div>
