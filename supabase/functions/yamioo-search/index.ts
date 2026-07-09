@@ -90,13 +90,14 @@ Deno.serve(async (req: Request) => {
       const dist = (typeof place?.lat === "number" && typeof place?.lng === "number")
         ? haversineKm(place.lat, place.lng, e.lat, e.lng) : 0;
       const conf = Math.max(40, Math.min(99, e.confianca ?? 70));
-      const score = 0.55 * (1 - Math.min(dist, 10) / 10) + 0.3 * (conf / 100) + (e.validado ? 0.15 : 0);
+      const verificado = e.verificado === true;
+      const score = 0.5 * (1 - Math.min(dist, 10) / 10) + 0.28 * (conf / 100) + (e.validado ? 0.12 : 0) + (verificado ? 0.2 : 0);
       return {
         nome: e.nome, tipo: e.tipo || "local", categoria: e.categoria || "",
         descricao: e.descricao || "", preco: e.preco ?? null,
         distancia_km: Math.round(dist * 10) / 10, confianca: conf,
         frescura: frescura(e.atualizado_em), code: e.afroloc ?? afrolocCode(e),
-        fonte: e.fonte === "web" ? "web" : "local", _score: score,
+        fonte: e.fonte === "web" ? "web" : "local", verificado, _score: score,
       };
     }).sort((a, b) => b._score - a._score).slice(0, 6);
 

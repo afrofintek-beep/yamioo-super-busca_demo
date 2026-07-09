@@ -12,7 +12,7 @@ export type Tipo = "local" | "servico" | "pessoa" | "oportunidade" | "conteudo";
 export type Result = {
   nome: string; tipo: Tipo; categoria: string; descricao: string;
   preco: string | null; dist: number; conf: number; fresh: string;
-  score: number; fonte: "web" | "local"; code: string;
+  score: number; fonte: "web" | "local"; code: string; verificado?: boolean;
 };
 export type Iny = { produto: string; mediana: string; tendencia: string } | null;
 export type SearchResponse = { interpretacao: string; lingua: string; iny: Iny; resultados: Result[] };
@@ -84,6 +84,7 @@ function enrich(parsed: any, query: string, place: Place): SearchResponse {
       dist, conf, fresh, score,
       fonte: r.fonte === "web" ? "web" : r.fonte === "local" ? "local" : (i % 3 === 0 ? "web" : "local"),
       code: typeof r.code === "string" && r.code ? r.code : afrolocLocal(place, seed),
+      verificado: !!r.verificado,
     };
   });
   rows.sort((a, b) => b.score - a.score);

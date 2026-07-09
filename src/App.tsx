@@ -4,6 +4,7 @@ import { resolveAfroloc } from "./lib/afroloc";
 import { runSearch, type Result, type Iny } from "./lib/search";
 import { registar, contarEntidades, avisarme } from "./lib/registar";
 import { gerarCartao, deeplink, baixar } from "./lib/cartao";
+import { atividadesPara } from "./lib/atividades";
 
 /* ---------- paleta / marca ---------- */
 const INK = "#0A0E11", INK2 = "#0E141A", CARD = "#12191F";
@@ -243,6 +244,7 @@ function ResultCard({ r, onShare }: { r: Result; onShare: () => void }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <h3 style={{ margin: 0, fontSize: 15.5, fontWeight: 700, color: CREAM, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.nome}</h3>
+            {r.verificado && <span title="Negócio verificado" style={{ flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10.5, fontWeight: 700, color: "#06110F", background: GRAD, borderRadius: 7, padding: "2px 6px" }}><Icon n="check" size={11} />Verificado</span>}
             <span style={{ ...tag, marginLeft: "auto" }}>{tipo}</span>
           </div>
           <div style={{ fontSize: 12, color: MUTE, marginTop: 1, display: "flex", alignItems: "center", gap: 5 }}>
@@ -360,6 +362,7 @@ function RegisterSheet({ place, onClose, onDone }: { place: Place; onClose: () =
   const [nome, setNome] = useState("");
   const [tipo, setTipo] = useState("local");
   const [categoria, setCategoria] = useState("");
+  const [catOpen, setCatOpen] = useState(false);
   const [descricao, setDescricao] = useState("");
   const [preco, setPreco] = useState("");
   const [coords, setCoords] = useState({ lat: place.lat, lng: place.lng });
@@ -426,7 +429,27 @@ function RegisterSheet({ place, onClose, onDone }: { place: Place; onClose: () =
                 <button key={id} onClick={() => setTipo(id)} style={{ ...chipGhost, display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 11px", fontSize: 12.5, ...(tipo === id ? { background: GRAD, color: "#06110F", borderColor: "transparent" } : {}) }}><Icon n={ic} size={14} />{lbl}</button>
               ))}
             </div>
-            <input value={categoria} onChange={(e) => setCategoria(e.target.value)} placeholder="Categoria (ex: Reparação de calçado)" style={field} />
+            <div style={{ position: "relative", marginBottom: 10 }}>
+              <input value={categoria}
+                onChange={(e) => { setCategoria(e.target.value); setCatOpen(true); }}
+                onFocus={() => setCatOpen(true)}
+                onBlur={() => setTimeout(() => setCatOpen(false), 150)}
+                placeholder="Atividade (escolhe ou escreve)" style={{ ...field, marginBottom: 0 }} />
+              {catOpen && (() => {
+                const lista = atividadesPara(tipo).filter((a) => a.toLowerCase().includes(categoria.trim().toLowerCase()));
+                if (!lista.length) return null;
+                return (
+                  <div style={{ position: "absolute", left: 0, right: 0, top: "calc(100% + 4px)", zIndex: 5, maxHeight: 190, overflowY: "auto", background: INK2, border: `1px solid ${LINE}`, borderRadius: 12, boxShadow: "0 14px 34px -14px rgba(0,0,0,0.7)" }}>
+                    {lista.map((a) => (
+                      <div key={a} onMouseDown={(e) => { e.preventDefault(); setCategoria(a); setCatOpen(false); }}
+                        style={{ padding: "9px 13px", fontSize: 13.5, color: CREAM, cursor: "pointer", borderBottom: `1px solid ${LINE}` }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>{a}</div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
             <textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descrição curta (o que fazes / vendes)" rows={3} style={{ ...field, resize: "none", fontFamily: "inherit" }} />
             <input value={preco} onChange={(e) => setPreco(e.target.value)} placeholder={`Preço (opcional, ex: 500 ${place.curr})`} style={field} />
 
