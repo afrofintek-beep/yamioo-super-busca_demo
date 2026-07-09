@@ -75,12 +75,38 @@ Deno.serve(async (req: Request) => {
     if (!r.ok) return json({ ok: false, error: `Falhou o registo (${r.status}).` }, 200);
     const [created] = await r.json();
 
-    const code = afrolocCode(cc, prov, mun, zona, lat, lng);
+    // A coluna `afroloc` é GERADA na BD (fonte única do codec). Usa-a; só se
+    // faltar recorre ao codec local (nunca deve faltar).
+    const code = created?.afroloc ?? afrolocCode(cc, prov, mun, zona, lat, lng);
+
+    // Nível 2 — livro de eventos (best-effort; nunca falha o registo).
+    await logEvento(URL, KEY, {
+      tipo: "registo",
+      entidade_id: created?.id ?? null,
+      afroloc: code,
+      cc, prov: prov || null, mun: mun || null,
+      meta: { nome, tipo, fonte: "registo" },
+    });
+
     return json({ ok: true, id: created?.id ?? null, code }, 200);
   } catch (e) {
     return json({ ok: false, error: String(e) }, 200);
   }
 });
+
+// Escreve um evento no livro de atividade (best-effort; erros são ignorados).
+async function logEvento(URL: string, KEY: string, evt: Record<string, unknown>): Promise<void> {
+  try {
+    await fetch(`${URL}/rest/v1/eventos`, {
+      method: "POST",
+      headers: {
+        apikey: KEY, Authorization: `Bearer ${KEY}`,
+        "Content-Type": "application/json", Prefer: "return=minimal",
+      },
+      body: JSON.stringify(evt),
+    });
+  } catch { /* eventos são best-effort */ }
+}
 
 function json(body: unknown, status: number) {
   return new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });

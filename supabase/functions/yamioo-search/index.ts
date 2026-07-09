@@ -95,7 +95,7 @@ Deno.serve(async (req: Request) => {
         nome: e.nome, tipo: e.tipo || "local", categoria: e.categoria || "",
         descricao: e.descricao || "", preco: e.preco ?? null,
         distancia_km: Math.round(dist * 10) / 10, confianca: conf,
-        frescura: frescura(e.atualizado_em), code: afrolocCode(e),
+        frescura: frescura(e.atualizado_em), code: e.afroloc ?? afrolocCode(e),
         fonte: e.fonte === "web" ? "web" : "local", _score: score,
       };
     }).sort((a, b) => b._score - a._score).slice(0, 6);
@@ -130,11 +130,43 @@ Não inventes entidades; baseia-te só nos resultados acima.`;
     }
 
     const out = { interpretacao, lingua_detectada: lang, iny, resultados: enriched.map(({ _score, ...r }) => r) };
+
+    // Nível 2 — evento de PROCURA (best-effort): sinal de procura por zona/termo
+    // que a Kilapi lê. O `afroloc` aqui é o LUGAR de quem procura.
+    const URL = Deno.env.get("SUPABASE_URL");
+    const KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (URL && KEY) {
+      const searcherAfroloc = (typeof place?.lat === "number" && typeof place?.lng === "number")
+        ? afrolocCode({ lat: place.lat, lng: place.lng, cc, prov: place?.prov, mun: place?.mun, zona: place?.zona })
+        : null;
+      await logEvento(URL, KEY, {
+        tipo: "procura",
+        afroloc: searcherAfroloc,
+        cc, prov: place?.prov ?? null, mun: place?.mun ?? null,
+        termo: String(query ?? "").slice(0, 120),
+        meta: { n_resultados: enriched.length, bairro: place?.bairro ?? null },
+      });
+    }
+
     return json({ text: JSON.stringify(out) }, 200);
   } catch (e) {
     return json({ text: "", error: String(e) }, 200);
   }
 });
+
+// Escreve um evento no livro de atividade (best-effort; erros ignorados).
+async function logEvento(URL: string, KEY: string, evt: Record<string, unknown>): Promise<void> {
+  try {
+    await fetch(`${URL}/rest/v1/eventos`, {
+      method: "POST",
+      headers: {
+        apikey: KEY, Authorization: `Bearer ${KEY}`,
+        "Content-Type": "application/json", Prefer: "return=minimal",
+      },
+      body: JSON.stringify(evt),
+    });
+  } catch { /* eventos são best-effort */ }
+}
 
 function json(body: unknown, status: number) {
   return new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });

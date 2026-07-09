@@ -17,13 +17,6 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const R = 6378137.0, MAX_LAT = 85.05112878;
-function toMercator(lat: number, lon: number) {
-  const c = Math.max(-MAX_LAT, Math.min(MAX_LAT, lat));
-  return { x: R * (lon * Math.PI / 180), y: R * Math.log(Math.tan(Math.PI / 4 + (c * Math.PI / 180) / 2)) };
-}
-function encodeCoord(n: number) { const u = n >= 0 ? n * 2 : -n * 2 - 1; return u.toString(36).toUpperCase(); }
-
 // OSM tag → (tipo, categoria legível)
 function classify(tags: Record<string, string>): { tipo: string; categoria: string } | null {
   const pretty = (s: string) => s.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
@@ -77,8 +70,8 @@ out center ${limit};`;
       const c = classify(t);
       const la = el.lat ?? el.center?.lat, ln = el.lon ?? el.center?.lon;
       if (!c || !t.name || typeof la !== "number" || typeof ln !== "number") return null;
-      const { x, y } = toMercator(la, ln);
-      void x; void y;
+      // O código AFROLOC é agora uma COLUNA GERADA em `entidades` (calculado na
+      // BD a partir de lat/lng + divisões) — nada a computar aqui.
       return {
         nome: String(t.name).slice(0, 120),
         tipo: c.tipo, categoria: c.categoria.slice(0, 80),
@@ -108,6 +101,14 @@ out center ${limit};`;
       ingeridos = (await r.json()).length;
     }
 
+    // Nível 2 — evento agregado de ingestão web (best-effort).
+    if (ingeridos > 0) {
+      await logEvento(URL, KEY, {
+        tipo: "ingest", cc, prov: prov || null, mun: mun || null,
+        meta: { ingeridos, encontrados: els.length, fonte: "web", zona: zona || null },
+      });
+    }
+
     return json({
       ok: true, encontrados: els.length, ingeridos,
       exemplos: rows.slice(0, 5).map((r: any) => `${r.nome} (${r.categoria})`),
@@ -116,6 +117,20 @@ out center ${limit};`;
     return json({ ok: false, error: String(e) }, 200);
   }
 });
+
+// Escreve um evento no livro de atividade (best-effort; erros ignorados).
+async function logEvento(URL: string, KEY: string, evt: Record<string, unknown>): Promise<void> {
+  try {
+    await fetch(`${URL}/rest/v1/eventos`, {
+      method: "POST",
+      headers: {
+        apikey: KEY, Authorization: `Bearer ${KEY}`,
+        "Content-Type": "application/json", Prefer: "return=minimal",
+      },
+      body: JSON.stringify(evt),
+    });
+  } catch { /* eventos são best-effort */ }
+}
 
 function json(body: unknown, status: number) {
   return new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });
