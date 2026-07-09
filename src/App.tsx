@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { PLACES, makePlace, DEFAULT_PLACE, type Place } from "./lib/places";
 import { resolveAfroloc } from "./lib/afroloc";
 import { runSearch, type Result, type Iny } from "./lib/search";
-import { registar, contarEntidades, avisarme, subscrever, enviarDocumento } from "./lib/registar";
+import { registar, contarEntidades, avisarme, subscrever, enviarDocumento, admin } from "./lib/registar";
 import { PLANOS, CICLOS, precoTotal, akz, type PlanoId, type Ciclo } from "./lib/planos";
 import { gerarCartao, deeplink, baixar } from "./lib/cartao";
 import { atividadesPara } from "./lib/atividades";
@@ -35,6 +35,7 @@ const EXPLORAR: { label: string; icon: string }[] = [
 ];
 
 export default function App() {
+  if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("validar")) return <Painel />;
   const [place, setPlace] = useState<Place>(DEFAULT_PLACE);
   const [pin, setPin] = useState<{ code: string; real: boolean }>({ code: "AO-LUA-TAL-TAL-GEN-G10-X6AGK-Y4A31", real: false });
   const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(null);
@@ -211,6 +212,85 @@ export default function App() {
   );
 }
 
+function Painel() {
+  const [key, setKey] = useState("");
+  const [entrado, setEntrado] = useState(false);
+  const [lista, setLista] = useState<any[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  const carregar = async (k: string) => {
+    setBusy(true); setMsg("");
+    const res = await admin("listar", k);
+    setBusy(false);
+    if (res.error) { setMsg(res.error); return; }
+    setKey(k); setEntrado(true); setLista(res.pendentes || []);
+  };
+  const decidir = async (id: string, decisao: string) => {
+    const res = await admin("decidir", key, { entidade_id: id, decisao });
+    if (res.ok) setLista((l) => l.filter((e) => e.id !== id));
+    else setMsg(res.error || "Falhou.");
+  };
+  const field: React.CSSProperties = { width: "100%", background: INK2, border: `1px solid ${LINE}`, borderRadius: 12, padding: "12px 14px", color: CREAM, outline: "none", fontSize: 14, marginBottom: 12 };
+
+  return (
+    <div style={{ minHeight: "100vh", background: INK, color: CREAM, fontFamily: "ui-sans-serif, -apple-system, 'Segoe UI', Roboto, sans-serif", display: "flex", justifyContent: "center" }}>
+      <div style={{ width: "100%", maxWidth: 760, padding: "24px 18px 80px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}><Wordmark /><span style={badge}>painel · validação</span></div>
+        {!entrado ? (
+          <div style={{ maxWidth: 340, margin: "44px auto", textAlign: "center" }}>
+            <div style={{ color: TEAL, marginBottom: 10, display: "flex", justifyContent: "center" }}><Icon n="lock" size={30} /></div>
+            <h2 style={{ margin: "0 0 6px", fontSize: 19 }}>Painel de validação</h2>
+            <p style={{ color: MUTE, fontSize: 13, margin: "0 0 16px" }}>Introduz a chave de acesso.</p>
+            <input type="password" value={key} onChange={(e) => setKey(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") carregar(key); }} placeholder="Chave de admin" style={field} />
+            {msg && <div style={{ color: "#FF8A8A", fontSize: 12.5, marginBottom: 10 }}>{msg}</div>}
+            <button onClick={() => carregar(key)} disabled={busy} style={{ ...goBtn, background: GRAD, width: "100%", padding: 13, fontSize: 15, opacity: busy ? 0.6 : 1 }}>{busy ? "A entrar…" : "Entrar"}</button>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>Pendentes <span style={{ color: MUTE, fontWeight: 400 }}>({lista.length})</span></div>
+              <button onClick={() => carregar(key)} style={{ ...chipGhost, display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", fontSize: 12.5 }}><Icon n="refresh" size={14} />Atualizar</button>
+            </div>
+            {msg && <div style={{ color: "#FF8A8A", fontSize: 12.5, marginBottom: 10 }}>{msg}</div>}
+            {lista.length === 0 && <div style={{ textAlign: "center", color: MUTE, padding: "40px 0", fontSize: 14 }}>Nada pendente de validação. 🎉</div>}
+            {lista.map((e) => (
+              <div key={e.id} className="ycard" style={{ background: CARD, borderRadius: 16, padding: 16, marginBottom: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                  <h3 style={{ margin: 0, fontSize: 15.5, fontWeight: 700 }}>{e.nome}</h3>
+                  <span style={{ ...tag, marginLeft: "auto" }}>{e.perfil === "formal" ? "Empresa" : "Informal"}</span>
+                </div>
+                <div style={{ fontSize: 12, color: MUTE, marginBottom: 10 }}>{e.categoria || "—"} · {e.mun}/{e.zona} · <span style={{ fontFamily: "ui-monospace, monospace" }}>{e.afroloc}</span></div>
+                <div style={{ fontSize: 12.5, color: "#C9D2DB", lineHeight: 1.8, marginBottom: 10 }}>
+                  {e.perfil === "formal" && <>
+                    <div>NIF: <b>{e.nif || "—"}</b> · {e.forma_juridica || "—"}</div>
+                    <div>Alvará: {e.alvara || "—"} · Registo: {e.registo_comercial || "—"}</div>
+                    <div>Rep.: {e.rep_legal_nome || "—"} (BI {e.rep_legal_bi || "—"})</div>
+                    <div>Setor: {e.setor || "—"} · Trab.: {e.n_trabalhadores ?? "—"}</div>
+                  </>}
+                  <div>Contacto: {e.telemovel || "—"}{e.email ? ` · ${e.email}` : ""}</div>
+                </div>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+                  {(!e.documentos || e.documentos.length === 0) && <span style={{ fontSize: 12, color: MUTE }}>Sem documentos enviados.</span>}
+                  {(e.documentos || []).map((d: any, i: number) => d.url ? (
+                    (d.mime || "").startsWith("image/")
+                      ? <a key={i} href={d.url} target="_blank" rel="noreferrer" style={{ textAlign: "center" }}><img src={d.url} alt={d.tipo} style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 10, border: `1px solid ${LINE}`, display: "block" }} /><div style={{ fontSize: 10, color: MUTE, marginTop: 3 }}>{d.tipo}</div></a>
+                      : <a key={i} href={d.url} target="_blank" rel="noreferrer" style={{ ...chipGhost, display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none" }}><Icon n="file" size={14} />{d.tipo}</a>
+                  ) : <span key={i} style={{ fontSize: 11, color: MUTE }}>{d.tipo} (indisp.)</span>)}
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => decidir(e.id, e.perfil === "formal" ? "empresa" : "comunidade")} style={{ ...goBtn, background: GRAD, flex: 1, padding: 11, fontSize: 13.5 }}>Aprovar · {e.perfil === "formal" ? "Empresa verificada" : "Verificado"}</button>
+                  <button onClick={() => decidir(e.id, "rejeitar")} style={{ ...chipGhost, padding: "11px 16px", color: "#FF8A8A", borderColor: "rgba(255,120,120,0.3)" }}>Rejeitar</button>
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function Wordmark() {
   return (
     <svg width="141" height="30" viewBox="0 0 300 64" fill="none" role="img" aria-label="yamioo" style={{ display: "block" }}>
@@ -247,6 +327,8 @@ function Icon({ n, size = 16 }: { n: string; size?: number }) {
     x: <><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></>,
     "arrow-left": <><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></>,
     file: <><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><polyline points="14 3 14 8 19 8" /></>,
+    lock: <><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></>,
+    refresh: <><path d="M21 12a9 9 0 1 1-3-6.7" /><polyline points="21 3 21 9 15 9" /></>,
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", flexShrink: 0 }} aria-hidden="true">

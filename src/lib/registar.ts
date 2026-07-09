@@ -84,6 +84,19 @@ export async function registar(input: RegInput): Promise<{ ok: boolean; code?: s
   }
 }
 
+// Painel de validação — protegido pela ADMIN_KEY (validada no servidor).
+export async function admin(action: string, key: string, payload: Record<string, unknown> = {}): Promise<any> {
+  if (!SUPABASE_URL) return { error: "App sem ligação." };
+  try {
+    const r = await fetch(`${SUPABASE_URL}/functions/v1/yamioo-admin`, {
+      method: "POST", headers: { "Content-Type": "application/json", "x-admin-key": key },
+      body: JSON.stringify({ action, ...payload }),
+    });
+    if (r.status === 401) return { error: "Chave inválida.", status: 401 };
+    return await r.json().catch(() => ({ error: "Resposta inválida." }));
+  } catch { return { error: "Sem ligação." }; }
+}
+
 // Upload de um documento de validação (base64) → estado 'pendente'.
 export async function enviarDocumento(entidade_id: string, tipo: string, base64: string, mime: string): Promise<{ ok: boolean; error?: string }> {
   if (!SUPABASE_URL) return { ok: false, error: "App sem ligação." };
