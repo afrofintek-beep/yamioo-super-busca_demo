@@ -8,19 +8,22 @@ import { gerarCartao, deeplink, baixar } from "./lib/cartao";
 import { atividadesPara } from "./lib/atividades";
 
 /* ---------- paleta / marca ---------- */
-const INK = "#0A0E11", INK2 = "#0E141A", CARD = "#12191F";
-const LINE = "rgba(255,255,255,0.08)";
-const CREAM = "#F2E7D3", MUTE = "#8A95A1";
-const ORANGE = "#FF7A1A", AMBER = "#FFB347", TEAL = "#19C6AC";
-const GRAD = `linear-gradient(90deg, ${ORANGE} 0%, ${AMBER} 38%, ${TEAL} 100%)`;
+const INK = "#0c1420", INK2 = "#141019", CARD = "#181521";
+const LINE = "rgba(255,255,255,0.09)";
+const CREAM = "#F2E7D3", MUTE = "#9A96A3";
+const ORANGE = "#FF6B35", AMBER = "#FFB347", TEAL = "#19C6AC";
+const GRAD = `linear-gradient(90deg, ${ORANGE} 0%, ${AMBER} 45%, ${TEAL} 100%)`;
+// fundo quente (bordô no topo → navy em baixo), como o yamioo.com
+const BG = `radial-gradient(90% 60% at 50% -5%, rgba(150,52,58,0.34), rgba(84,36,52,0.12) 38%, transparent 62%), linear-gradient(180deg, #26141a 0%, #17131f 46%, #0c1420 100%)`;
+const FONT = "'Poppins', ui-sans-serif, -apple-system, 'Segoe UI', Roboto, sans-serif";
 
 const VERTICALS = [
-  { id: "todos", label: "Tudo", icon: "sparkles" },
+  { id: "todos", label: "Todos", icon: "sparkles" },
+  { id: "pessoa", label: "Pessoas", icon: "user" },
   { id: "local", label: "Locais", icon: "pin" },
   { id: "servico", label: "Serviços", icon: "tool" },
-  { id: "pessoa", label: "Pessoas", icon: "user" },
-  { id: "oportunidade", label: "Oportunidades", icon: "briefcase" },
   { id: "conteudo", label: "Conteúdo", icon: "news" },
+  { id: "oportunidade", label: "Oportunidades", icon: "briefcase" },
 ];
 const TIPO_LABEL: Record<string, string> = { local: "Local", servico: "Serviço", pessoa: "Pessoa", oportunidade: "Oportunidade", conteudo: "Conteúdo" };
 
@@ -95,8 +98,8 @@ export default function App() {
   const suggestions = ["banco", "farmácia", "restaurante", "mercado"];
 
   return (
-    <div style={{ minHeight: "100vh", background: INK, color: CREAM, fontFamily: "ui-sans-serif, -apple-system, 'Segoe UI', Roboto, sans-serif", display: "flex", justifyContent: "center" }}>
-      <div className="wrap" style={{ position: "relative", overflow: "hidden", minHeight: "100vh", background: `radial-gradient(120% 60% at 50% -10%, rgba(255,122,26,0.13), rgba(255,179,71,0.05) 30%, transparent 58%), linear-gradient(180deg, ${INK2}, ${INK} 40%)` }}>
+    <div style={{ minHeight: "100vh", background: INK, color: CREAM, fontFamily: FONT, display: "flex", justifyContent: "center" }}>
+      <div className="wrap" style={{ position: "relative", overflow: "hidden", minHeight: "100vh", background: BG }}>
         <div style={{ position: "absolute", top: -180, left: "50%", transform: "translateX(-50%)", width: 440, height: 300, background: "radial-gradient(closest-side, rgba(255,140,40,0.16), transparent)", filter: "blur(14px)", animation: "breathe 6s ease-in-out infinite", pointerEvents: "none" }} />
 
         <div style={{ position: "relative", padding: "22px 20px 120px" }}>
@@ -119,14 +122,13 @@ export default function App() {
             <span style={{ ...badge, display: "inline-flex", alignItems: "center", gap: 5 }}><Icon n="bolt" size={12} /> Modo leve</span>
           </div>
 
-          <div style={{ borderRadius: 18, padding: 1.5, background: GRAD, boxShadow: "0 10px 30px -20px rgba(255,122,26,0.35)" }}>
-            <div style={{ background: INK2, borderRadius: 16.5, padding: "13px 14px", display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ color: MUTE, display: "flex", opacity: 0.8 }}><Icon n="search" size={18} /></span>
-              <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") search(); if (e.key === "Escape") clearSearch(); }} placeholder={PLACEHOLDERS[phIdx]} style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: CREAM, fontSize: 15.5 }} />
-              {(query || results) && <button onClick={clearSearch} title="Limpar" style={{ ...iconBtn, display: "grid", placeItems: "center", color: MUTE }}><Icon n="x" size={16} /></button>}
-              <button onClick={voice} title="Pesquisar por voz" style={{ ...iconBtn, display: "grid", placeItems: "center" }}><Icon n="mic" size={17} /></button>
-              <button onClick={() => search()} style={{ ...goBtn, background: GRAD }}>Buscar</button>
-            </div>
+          <div style={{ fontSize: 14, color: MUTE, textAlign: "center", margin: "4px 0 14px" }}>Descobre mais. Pesquisa com contexto.</div>
+          <div style={{ borderRadius: 16, border: `1px solid ${LINE}`, background: "rgba(255,255,255,0.03)", padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ color: MUTE, display: "flex", opacity: 0.85 }}><Icon n="search" size={18} /></span>
+            <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") search(); if (e.key === "Escape") clearSearch(); }} placeholder="Pesquisar pessoas, locais e serviços" style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: CREAM, fontSize: 15.5, fontFamily: FONT }} />
+            {(query || results) && <button onClick={clearSearch} title="Limpar" style={{ ...iconBtn, display: "grid", placeItems: "center", color: MUTE }}><Icon n="x" size={16} /></button>}
+            <button onClick={voice} title="Pesquisar por voz" style={{ ...iconBtn, display: "grid", placeItems: "center" }}><Icon n="mic" size={17} /></button>
+            <button onClick={() => search()} style={{ ...goBtn, background: ORANGE, color: "#fff" }}>Buscar</button>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "10px 4px 0", fontSize: 12.5, color: MUTE }}>
@@ -140,7 +142,7 @@ export default function App() {
             {VERTICALS.map((v) => {
               const on = chip === v.id;
               return (
-                <button key={v.id} onClick={() => setChip(v.id)} style={{ flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 13px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", border: `1px solid ${on ? "transparent" : LINE}`, color: on ? "#06110F" : CREAM, background: on ? GRAD : "rgba(255,255,255,0.03)" }}>
+                <button key={v.id} onClick={() => setChip(v.id)} style={{ flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", border: `1px solid ${on ? "transparent" : LINE}`, color: on ? "#fff" : CREAM, background: on ? ORANGE : "rgba(255,255,255,0.05)" }}>
                   <Icon n={v.icon} size={15} />{v.label}
                 </button>
               );
@@ -291,16 +293,12 @@ function Painel() {
   );
 }
 
-function Wordmark() {
+function Wordmark({ size = 30 }: { size?: number }) {
+  const s = size / 30;
   return (
-    <svg width="141" height="30" viewBox="0 0 300 64" fill="none" role="img" aria-label="yamioo" style={{ display: "block" }}>
-      <defs>
-        <linearGradient id="wlg" x1="129" y1="0" x2="181" y2="0" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor={ORANGE} /><stop offset="0.5" stopColor={AMBER} /><stop offset="1" stopColor={TEAL} />
-        </linearGradient>
-      </defs>
-      <text x="6" y="44" fontFamily="ui-sans-serif, system-ui, -apple-system, sans-serif" fontSize="46" fontWeight="800" letterSpacing="-2" fill={CREAM}>yami</text>
-      <path d="M129,28 C129,17 147,17 155,28 C163,39 181,39 181,28 C181,17 163,17 155,28 C147,39 129,39 129,28 Z" fill="none" stroke="url(#wlg)" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+    <svg width={152 * s} height={32 * s} viewBox="0 0 300 64" fill="none" role="img" aria-label="yamioo" style={{ display: "block" }}>
+      <text x="2" y="46" fontFamily={FONT} fontSize="50" fontWeight="700" letterSpacing="-1.5" fill={CREAM}>yami</text>
+      <path d="M126,30 C126,15 149,15 158,30 C167,45 190,45 190,30 C190,15 167,15 158,30 C149,45 126,45 126,30 Z" fill="none" stroke={CREAM} strokeWidth="7.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
