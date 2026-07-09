@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { PLACES, makePlace, DEFAULT_PLACE, type Place } from "./lib/places";
 import { resolveAfroloc } from "./lib/afroloc";
 import { runSearch, type Result, type Iny } from "./lib/search";
-import { registar, contarEntidades, avisarme, subscrever } from "./lib/registar";
+import { registar, contarEntidades, avisarme, subscrever, enviarDocumento } from "./lib/registar";
 import { PLANOS, CICLOS, precoTotal, akz, type PlanoId, type Ciclo } from "./lib/planos";
 import { gerarCartao, deeplink, baixar } from "./lib/cartao";
 import { atividadesPara } from "./lib/atividades";
@@ -246,6 +246,7 @@ function Icon({ n, size = 16 }: { n: string; size?: number }) {
     bell: <><path d="M6 9a6 6 0 0 1 12 0c0 5 2 7 2 7H4s2-2 2-7" /><path d="M10 21a2 2 0 0 0 4 0" /></>,
     x: <><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></>,
     "arrow-left": <><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></>,
+    file: <><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><polyline points="14 3 14 8 19 8" /></>,
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", flexShrink: 0 }} aria-hidden="true">
@@ -467,6 +468,8 @@ function RegisterSheet({ place, onClose, onDone, onPlanos }: { place: Place; onC
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [done, setDone] = useState<string | null>(null);
+  const [entId, setEntId] = useState<string | null>(null);
+  const [docsOpen, setDocsOpen] = useState(false);
   const [perfil, setPerfil] = useState<"" | "informal" | "formal">("");
   const [passo, setPasso] = useState(0);
   const [f, setF] = useState<Record<string, string>>({ responsavel: "", telemovel: "", whatsapp: "", horario: "", desde: "", email: "", website: "", nif: "", forma_juridica: "", registo_comercial: "", alvara: "", rep_legal_nome: "", rep_legal_bi: "", setor: "", n_trabalhadores: "", endereco_fiscal: "", iban: "" });
@@ -509,7 +512,7 @@ function RegisterSheet({ place, onClose, onDone, onPlanos }: { place: Place; onC
       lat: coords.lat, lng: coords.lng, perfil: perfil || "informal", ...f,
     });
     setBusy(false);
-    if (res.ok) { setDone(res.code || ""); onDone("Registado! Já aparece nas pesquisas."); }
+    if (res.ok) { setDone(res.code || ""); setEntId(res.id || null); onDone("Registado! Já aparece nas pesquisas."); }
     else setErr(res.error || "Não foi possível registar.");
   };
   const inp = (k: string, ph: string) => <input value={f[k]} onChange={(e) => upd(k, e.target.value)} placeholder={ph} style={{ width: "100%", background: INK, border: `1px solid ${LINE}`, borderRadius: 12, padding: "11px 13px", color: CREAM, outline: "none", fontSize: 14, marginBottom: 10 }} />;
@@ -517,6 +520,7 @@ function RegisterSheet({ place, onClose, onDone, onPlanos }: { place: Place; onC
   const field: React.CSSProperties = { width: "100%", background: INK, border: `1px solid ${LINE}`, borderRadius: 12, padding: "11px 13px", color: CREAM, outline: "none", fontSize: 14, marginBottom: 10 };
 
   return (
+    <>
     <div onClick={onClose} style={overlay}>
       <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", left: 0, right: 0, bottom: 0, maxHeight: "90%", background: INK2, borderTopLeftRadius: 22, borderTopRightRadius: 22, border: `1px solid ${LINE}`, padding: 18, overflowY: "auto", animation: "slideup .28s ease" }}>
         <div style={{ width: 40, height: 4, borderRadius: 9, background: LINE, margin: "0 auto 16px" }} />
@@ -609,10 +613,53 @@ function RegisterSheet({ place, onClose, onDone, onPlanos }: { place: Place; onC
               <button onClick={guardarCartao} style={{ ...chipGhost, flex: 1, padding: 11, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon n="download" size={14} />Guardar</button>
               <button onClick={() => { try { navigator.clipboard?.writeText(done); } catch {} onDone("Código copiado."); }} style={{ ...chipGhost, flex: 1, padding: 11, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon n="copy" size={14} />Copiar</button>
             </div>
+            {entId && <button onClick={() => setDocsOpen(true)} style={{ width: "100%", padding: "10px", marginBottom: 6, borderRadius: 12, cursor: "pointer", background: "rgba(255,255,255,0.03)", border: `1px solid ${LINE}`, color: CREAM, fontSize: 13.5, fontWeight: 600, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}><Icon n="file" size={15} />Enviar documentos (validação)</button>}
             <button onClick={() => onPlanos(nome, done)} style={{ width: "100%", padding: "10px", marginBottom: 6, borderRadius: 12, cursor: "pointer", background: "rgba(25,198,172,0.08)", border: "1px solid rgba(25,198,172,0.3)", color: TEAL, fontSize: 13.5, fontWeight: 600, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}><Icon n="check" size={15} />Quero o selo ✓ e destaque</button>
             <button onClick={onClose} style={{ ...linkBtn }}>Concluir</button>
           </div>
         )}
+      </div>
+    </div>
+    {docsOpen && entId && <DocsSheet entId={entId} perfil={perfil || "informal"} onClose={() => setDocsOpen(false)} onToast={onDone} />}
+    </>
+  );
+}
+
+function DocsSheet({ entId, perfil, onClose, onToast }: { entId: string; perfil: string; onClose: () => void; onToast: (m: string) => void }) {
+  const DOCS: [string, string][] = perfil === "formal"
+    ? [["certidao", "Certidão comercial"], ["alvara", "Alvará / licença"], ["bi", "BI do representante"], ["nif", "Cartão NIF"], ["foto", "Foto do estabelecimento"]]
+    : [["foto", "Foto do local / banca"], ["bi", "BI do responsável (opcional)"]];
+  const [st, setSt] = useState<Record<string, string>>({});
+  const set = (k: string, v: string) => setSt((p) => ({ ...p, [k]: v }));
+  const onFile = (tipo: string, file?: File) => {
+    if (!file) return;
+    const rd = new FileReader();
+    rd.onload = async () => {
+      const base64 = String(rd.result).split(",")[1] || "";
+      set(tipo, "…");
+      const res = await enviarDocumento(entId, tipo, base64, file.type || "application/octet-stream");
+      set(tipo, res.ok ? "ok" : "erro");
+      onToast(res.ok ? "Documento enviado." : (res.error || "Falhou o envio."));
+    };
+    rd.readAsDataURL(file);
+  };
+  return (
+    <div onClick={onClose} style={{ ...overlay, zIndex: 50 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", left: 0, right: 0, bottom: 0, maxHeight: "88%", background: INK2, borderTopLeftRadius: 22, borderTopRightRadius: 22, border: `1px solid ${LINE}`, padding: 18, overflowY: "auto", animation: "slideup .28s ease" }}>
+        <div style={{ width: 40, height: 4, borderRadius: 9, background: LINE, margin: "0 auto 16px" }} />
+        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 2 }}>Documentos de validação</div>
+        <div style={{ fontSize: 12.5, color: MUTE, marginBottom: 14, lineHeight: 1.5 }}>Envia os documentos. Ficas <b style={{ color: AMBER }}>pendente de validação</b> até um agente confirmar — depois recebes o selo <b style={{ color: TEAL }}>{perfil === "formal" ? "Empresa verificada" : "Verificado"}</b>.</div>
+        {DOCS.map(([tipo, label]) => (
+          <div key={tipo} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 0", borderBottom: `1px solid ${LINE}` }}>
+            <span style={{ color: st[tipo] === "ok" ? TEAL : MUTE, display: "flex" }}><Icon n={st[tipo] === "ok" ? "check" : "file"} size={18} /></span>
+            <span style={{ flex: 1, fontSize: 13.5, color: CREAM }}>{label}</span>
+            <label style={{ ...chipGhost, padding: "7px 12px", fontSize: 12.5, cursor: "pointer" }}>
+              {st[tipo] === "ok" ? "Trocar" : st[tipo] === "…" ? "A enviar…" : st[tipo] === "erro" ? "Repetir" : "Escolher"}
+              <input type="file" accept="image/*,application/pdf" style={{ display: "none" }} onChange={(e) => onFile(tipo, e.target.files?.[0] || undefined)} />
+            </label>
+          </div>
+        ))}
+        <button onClick={onClose} style={{ ...goBtn, background: GRAD, width: "100%", padding: 13, fontSize: 15, marginTop: 16 }}>Concluir</button>
       </div>
     </div>
   );

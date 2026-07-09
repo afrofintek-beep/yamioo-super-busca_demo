@@ -68,7 +68,7 @@ export type RegInput = {
   n_trabalhadores?: string; endereco_fiscal?: string; iban?: string;
 };
 
-export async function registar(input: RegInput): Promise<{ ok: boolean; code?: string; error?: string }> {
+export async function registar(input: RegInput): Promise<{ ok: boolean; code?: string; id?: string; error?: string }> {
   if (!SUPABASE_URL) return { ok: false, error: "App sem ligação ao servidor." };
   try {
     const r = await fetch(`${SUPABASE_URL}/functions/v1/yamioo-registar`, {
@@ -78,8 +78,24 @@ export async function registar(input: RegInput): Promise<{ ok: boolean; code?: s
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || d.ok === false) return { ok: false, error: d.error || "Não foi possível registar." };
-    return { ok: true, code: d.code };
+    return { ok: true, code: d.code, id: d.id };
   } catch {
     return { ok: false, error: "Sem ligação. Tenta de novo." };
+  }
+}
+
+// Upload de um documento de validação (base64) → estado 'pendente'.
+export async function enviarDocumento(entidade_id: string, tipo: string, base64: string, mime: string): Promise<{ ok: boolean; error?: string }> {
+  if (!SUPABASE_URL) return { ok: false, error: "App sem ligação." };
+  try {
+    const r = await fetch(`${SUPABASE_URL}/functions/v1/yamioo-documento`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entidade_id, tipo, base64, mime }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d.ok === false) return { ok: false, error: d.error || "Upload falhou." };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Sem ligação." };
   }
 }
