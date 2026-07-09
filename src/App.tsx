@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { PLACES, makePlace, DEFAULT_PLACE, type Place } from "./lib/places";
 import { resolveAfroloc } from "./lib/afroloc";
 import { runSearch, type Result, type Iny } from "./lib/search";
-import { registar, contarEntidades } from "./lib/registar";
+import { registar, contarEntidades, avisarme } from "./lib/registar";
 import { gerarCartao, deeplink, baixar } from "./lib/cartao";
 
 /* ---------- paleta / marca ---------- */
@@ -76,7 +76,8 @@ export default function App() {
 
   const copy = (t: string) => { try { navigator.clipboard?.writeText(t); } catch {} };
   const shown = results ? (chip === "todos" ? results : results.filter((r) => r.tipo === chip)) : null;
-  const suggestions = ["mercado perto", "preço do fubá hoje", "técnico de frigoríficos", "moto-táxi", "carpinteiro", "onde levantar dinheiro"];
+  // Sugestões que GANHAM — só termos com resultados reais no índice (arranque a frio).
+  const suggestions = ["banco", "farmácia", "restaurante", "mercado"];
 
   return (
     <div style={{ minHeight: "100vh", background: INK, color: CREAM, fontFamily: "ui-sans-serif, -apple-system, 'Segoe UI', Roboto, sans-serif", display: "flex", justifyContent: "center" }}>
@@ -141,6 +142,7 @@ export default function App() {
                   O que o Google não vê: a banca, o ze-do-conserto, a quitandeira da esquina.
                   <br />Pesquisa o mundo real à tua volta em <b style={{ color: CREAM }}>{place.bairro}</b>.
                 </p>
+                <div style={{ fontSize: 11.5, color: TEAL, letterSpacing: 0.3, marginBottom: 10, display: "inline-flex", alignItems: "center", gap: 6 }}><Icon n="check" size={13} />já no mapa perto de ti</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
                   {suggestions.map((s) => <button key={s} className="ychip" onClick={() => search(s)} style={chipGhost}>{s}</button>)}
                 </div>
@@ -151,12 +153,7 @@ export default function App() {
               <div>
                 {meta?.interpretacao && <p style={{ fontSize: 12.5, color: MUTE, margin: "0 2px 12px", lineHeight: 1.5 }}><span style={{ color: TEAL }}>⟶ </span>{meta.interpretacao}</p>}
                 {meta?.iny && meta.iny.produto && <InyStrip iny={meta.iny} />}
-                {results.length === 0 && (
-                  <div style={{ textAlign: "center", padding: "24px 8px" }}>
-                    <div style={{ color: MUTE, fontSize: 14, lineHeight: 1.6, marginBottom: 14 }}>Ainda não há nada real registado para <b style={{ color: CREAM }}>"{query}"</b> em {place.bairro}.<br />Sê o primeiro — o teu negócio fica no mapa com endereço próprio.</div>
-                    <button onClick={() => setReg(true)} style={{ ...goBtn, background: GRAD, padding: "11px 18px", display: "inline-flex", alignItems: "center", gap: 8 }}><Icon n="pin" size={16} />Registar o primeiro</button>
-                  </div>
-                )}
+                {results.length === 0 && <SemResultados query={query} place={place} onRegistar={() => setReg(true)} onToast={flash} />}
                 {results.length > 0 && shown && shown.length === 0 && <div style={{ textAlign: "center", color: MUTE, padding: "30px 0", fontSize: 14 }}>Sem entidades nesta vertical. Toca em <b style={{ color: CREAM }}>Tudo</b>.</div>}
                 <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
                   {shown && shown.map((r, i) => <ResultCard key={r.code + i} r={r} onShare={() => { copy(r.code); try { window.location.href = `sms:?&body=${encodeURIComponent(`${r.nome} — AfroLoc: ${r.code}`)}`; } catch {} flash("Código copiado — a abrir SMS no telemóvel."); }} />)}
@@ -215,6 +212,7 @@ function Icon({ n, size = 16 }: { n: string; size?: number }) {
     share: <><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.6" y1="13.5" x2="15.4" y2="17.5" /><line x1="15.4" y1="6.5" x2="8.6" y2="10.5" /></>,
     download: <><path d="M12 3v12" /><polyline points="7 10 12 15 17 10" /><line x1="5" y1="21" x2="19" y2="21" /></>,
     copy: <><rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" /></>,
+    bell: <><path d="M6 9a6 6 0 0 1 12 0c0 5 2 7 2 7H4s2-2 2-7" /><path d="M10 21a2 2 0 0 0 4 0" /></>,
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", flexShrink: 0 }} aria-hidden="true">
@@ -316,6 +314,43 @@ function Sheet({ place, onClose, onPick }: { place: Place; onClose: () => void; 
         ))}
         <div style={{ textAlign: "center", color: MUTE, fontSize: 11.5, padding: "6px 0 2px" }}>5 cidades-piloto · 54 países no produto completo</div>
       </div>
+    </div>
+  );
+}
+
+function SemResultados({ query, place, onRegistar, onToast }: { query: string; place: Place; onRegistar: () => void; onToast: (m: string) => void }) {
+  const [aberto, setAberto] = useState(false);
+  const [contacto, setContacto] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [feito, setFeito] = useState(false);
+
+  const confirmar = async () => {
+    if (!contacto.trim()) return;
+    setBusy(true);
+    const res = await avisarme({ termo: query, contacto: contacto.trim(), cc: place.cc, prov: place.prov, mun: place.mun, zona: place.zona, lat: place.lat, lng: place.lng });
+    setBusy(false);
+    if (res.ok) { setFeito(true); onToast("Combinado! Avisamos-te quando aparecer."); }
+    else onToast(res.error || "Não consegui guardar.");
+  };
+
+  return (
+    <div style={{ textAlign: "center", padding: "20px 8px" }}>
+      <div style={{ width: 46, height: 46, borderRadius: 13, margin: "0 auto 12px", display: "grid", placeItems: "center", color: MUTE, background: "rgba(255,255,255,0.04)", border: `1px solid ${LINE}` }}><Icon n="search" size={22} /></div>
+      <div style={{ color: CREAM, fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Ainda ninguém pôs "{query}" no mapa de {place.bairro}.</div>
+      <div style={{ color: MUTE, fontSize: 13, lineHeight: 1.6, marginBottom: 16 }}>Na economia informal, toda a gente conhece um. Ajuda a tornar visível — ou deixa que te avisamos quando aparecer.</div>
+
+      <button onClick={onRegistar} style={{ ...goBtn, background: GRAD, width: "100%", maxWidth: 320, padding: 12, fontSize: 14.5, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 10 }}><Icon n="pin" size={16} />Adiciona quem conheces</button>
+
+      {!aberto && !feito && (
+        <div><button onClick={() => setAberto(true)} style={{ ...linkBtn, width: "auto", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon n="bell" size={14} />Avisa-me quando aparecer</button></div>
+      )}
+      {aberto && !feito && (
+        <div style={{ maxWidth: 320, margin: "4px auto 0", display: "flex", gap: 8 }}>
+          <input value={contacto} onChange={(e) => setContacto(e.target.value)} placeholder="Telemóvel ou email" style={{ flex: 1, background: INK, border: `1px solid ${LINE}`, borderRadius: 10, padding: "10px 12px", color: CREAM, outline: "none", fontSize: 13.5 }} />
+          <button onClick={confirmar} disabled={busy} style={{ ...goBtn, background: GRAD, padding: "10px 14px", fontSize: 13.5, opacity: busy ? 0.6 : 1 }}>{busy ? "…" : "OK"}</button>
+        </div>
+      )}
+      {feito && <div style={{ color: TEAL, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 }}><Icon n="check" size={14} />Combinado. Avisamos-te.</div>}
     </div>
   );
 }
