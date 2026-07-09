@@ -26,6 +26,28 @@ function encodeCoord(n: number): string {
   const u = n >= 0 ? n * 2 : -n * 2 - 1;
   return u.toString(36).toUpperCase();
 }
+function decodeCoord(s: string): number {
+  const u = parseInt(s, 36);
+  return u % 2 === 0 ? u / 2 : -(u + 1) / 2;
+}
+function fromMercator(x: number, y: number) {
+  return { lat: (2 * Math.atan(Math.exp(y / R)) - Math.PI / 2) * (180 / Math.PI), lng: (x / R) * (180 / Math.PI) };
+}
+
+// Descodifica um código AFROLOC → coordenadas do centróide da célula.
+// Ex.: "AO-LUA-TAL-TAL-GEN-G10-X6AI2-Y49UF" → { lat, lng }.
+export function decodeAfroloc(code: string): { lat: number; lng: number } | null {
+  try {
+    const m = code.toUpperCase().match(/-G(10|25)-X([0-9A-Z]+)-Y([0-9A-Z]+)/);
+    if (!m) return null;
+    const g = parseInt(m[1], 10);
+    const ix = decodeCoord(m[2]), iy = decodeCoord(m[3]);
+    if (!isFinite(ix) || !isFinite(iy)) return null;
+    return fromMercator(ix * g + g / 2, iy * g + g / 2);
+  } catch {
+    return null;
+  }
+}
 function tiles(lat: number, lng: number, rural?: boolean) {
   const gridSize = rural ? 25 : 10;
   const { x, y } = toMercator(lat, lng);

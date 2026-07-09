@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { PLACES, makePlace, DEFAULT_PLACE, type Place } from "./lib/places";
-import { resolveAfroloc } from "./lib/afroloc";
+import { resolveAfroloc, decodeAfroloc } from "./lib/afroloc";
 import { runSearch, type Result, type Iny } from "./lib/search";
 import { registar, contarEntidades, avisarme, subscrever, enviarDocumento, admin } from "./lib/registar";
 import { PLANOS, CICLOS, precoTotal, akz, type PlanoId, type Ciclo } from "./lib/planos";
@@ -48,6 +50,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [stage, setStage] = useState(0);
   const [chip, setChip] = useState("todos");
+  const [vista, setVista] = useState<"lista" | "mapa">("lista");
   const [sheet, setSheet] = useState(false);
   const [reg, setReg] = useState(false);
   const [planos, setPlanos] = useState<{ nome: string; code: string } | null>(null);
@@ -182,10 +185,19 @@ export default function App() {
                 {meta?.interpretacao && <p style={{ fontSize: 12.5, color: MUTE, margin: "0 2px 12px", lineHeight: 1.5 }}><span style={{ color: TEAL }}>⟶ </span>{meta.interpretacao}</p>}
                 {meta?.iny && meta.iny.produto && <InyStrip iny={meta.iny} />}
                 {results.length === 0 && <SemResultados query={query} place={place} onRegistar={() => setReg(true)} onToast={flash} />}
+                {results.length > 0 && (
+                  <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+                    {(["lista", "mapa"] as const).map((v) => (
+                      <button key={v} onClick={() => setVista(v)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 999, fontSize: 12.5, fontWeight: 600, cursor: "pointer", border: `1px solid ${vista === v ? "transparent" : LINE}`, color: vista === v ? "#fff" : CREAM, background: vista === v ? ORANGE : "rgba(255,255,255,0.05)" }}><Icon n={v === "mapa" ? "pin" : "news"} size={14} />{v === "mapa" ? "Mapa" : "Lista"}</button>
+                    ))}
+                  </div>
+                )}
                 {results.length > 0 && shown && shown.length === 0 && <div style={{ textAlign: "center", color: MUTE, padding: "30px 0", fontSize: 14 }}>Sem entidades nesta vertical. Toca em <b style={{ color: CREAM }}>Tudo</b>.</div>}
-                <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
-                  {shown && shown.map((r, i) => <ResultCard key={r.code + i} r={r} onShare={() => { copy(r.code); try { window.location.href = `sms:?&body=${encodeURIComponent(`${r.nome} — AfroLoc: ${r.code}`)}`; } catch {} flash("Código copiado — a abrir SMS no telemóvel."); }} />)}
-                </div>
+                {vista === "mapa" && shown && shown.length > 0
+                  ? <MapaResultados resultados={shown} />
+                  : <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+                      {shown && shown.map((r, i) => <ResultCard key={r.code + i} r={r} onShare={() => { copy(r.code); try { window.location.href = `sms:?&body=${encodeURIComponent(`${r.nome} — AfroLoc: ${r.code}`)}`; } catch {} flash("Código copiado — a abrir SMS no telemóvel."); }} />)}
+                    </div>}
                 {results.length > 0 && (
                   <p style={{ textAlign: "center", color: MUTE, fontSize: 11.5, marginTop: 18, lineHeight: 1.6 }}>
                     Ranking por <b style={{ color: CREAM }}>proximidade · confiança · frescura</b>.<br />
@@ -288,6 +300,38 @@ function Painel() {
             ))}
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+function MapaResultados({ resultados }: { resultados: Result[] }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const pts = resultados.map((r) => ({ r, c: decodeAfroloc(r.code) })).filter((x) => x.c) as { r: Result; c: { lat: number; lng: number } }[];
+    const map = L.map(el, { attributionControl: false, zoomControl: true });
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { maxZoom: 19 }).addTo(map);
+    const ms: L.CircleMarker[] = [];
+    pts.forEach(({ r, c }) => {
+      const col = r.verificado ? "#FF6B35" : "#19C6AC";
+      const m = L.circleMarker([c.lat, c.lng], { radius: 8, color: col, fillColor: col, fillOpacity: 0.9, weight: 2 });
+      m.bindPopup(`<div style="font-family:sans-serif;min-width:150px"><b>${r.nome}</b><br><span style="color:#999;font-size:12px">${r.categoria || ""} · ${r.dist.toFixed(1)} km</span><br><code style="font-size:11px;color:#0f8a76">${r.code}</code></div>`);
+      m.addTo(map); ms.push(m);
+    });
+    if (pts.length) { try { map.fitBounds(L.featureGroup(ms).getBounds().pad(0.35)); } catch { map.setView([-8.93, 13.18], 13); } }
+    else map.setView([-8.93, 13.18], 13);
+    const t = setTimeout(() => map.invalidateSize(), 120);
+    return () => { clearTimeout(t); map.remove(); };
+  }, [resultados]);
+  return (
+    <div>
+      <div ref={ref} style={{ height: 400, borderRadius: 16, overflow: "hidden", border: `1px solid ${LINE}`, background: "#0c1420" }} />
+      <div style={{ fontSize: 11.5, color: MUTE, marginTop: 8, display: "flex", gap: 14, justifyContent: "center" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 9, height: 9, borderRadius: 9, background: TEAL }} />no índice</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 9, height: 9, borderRadius: 9, background: ORANGE }} />verificado</span>
+        <span>· pontos gerados dos códigos AFROLOC</span>
       </div>
     </div>
   );
