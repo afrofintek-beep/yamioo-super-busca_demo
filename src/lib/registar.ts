@@ -59,6 +59,13 @@ export type RegInput = {
   nome: string; tipo: string; categoria: string; descricao: string;
   preco: string | null; cc: string; prov: string; mun: string; zona: string;
   lat: number; lng: number;
+  // perfil + núcleo (opcionais)
+  perfil?: string; responsavel?: string; telemovel?: string; whatsapp?: string;
+  email?: string; website?: string; horario?: string; desde?: string;
+  // formal (opcionais)
+  nif?: string; forma_juridica?: string; registo_comercial?: string; alvara?: string;
+  rep_legal_nome?: string; rep_legal_bi?: string; setor?: string;
+  n_trabalhadores?: string; endereco_fiscal?: string; iban?: string;
 };
 
 export async function registar(input: RegInput): Promise<{ ok: boolean; code?: string; error?: string }> {

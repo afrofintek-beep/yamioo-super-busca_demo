@@ -51,14 +51,40 @@ Deno.serve(async (req: Request) => {
     const mun = clip(b.mun, 4).toUpperCase();
     const zona = clip(b.zona, 4).toUpperCase();
 
-    const row = {
+    const perfil = b.perfil === "formal" ? "formal" : "informal";
+    const intOrNull = (v: any) => { const n = parseInt(v, 10); return isNaN(n) ? null : n; };
+
+    const row: Record<string, unknown> = {
       nome, tipo,
       categoria: clip(b.categoria, 80) || null,
       descricao: clip(b.descricao, 400) || null,
       preco: clip(b.preco, 40) || null,
       cc, prov: prov || null, mun: mun || null, zona: zona || null,
-      lat, lng, confianca: 60, validado: false, fonte: "registo",
+      lat, lng, confianca: 60, validado: false, fonte: "registo", perfil,
+      // núcleo (ambos)
+      responsavel: clip(b.responsavel, 120) || null,
+      telemovel: clip(b.telemovel, 40) || null,
+      whatsapp: clip(b.whatsapp, 40) || null,
+      email: clip(b.email, 120) || null,
+      website: clip(b.website, 160) || null,
+      horario: clip(b.horario, 120) || null,
+      desde: intOrNull(b.desde),
+      foto_url: clip(b.foto_url, 400) || null,
     };
+    if (perfil === "formal") {
+      Object.assign(row, {
+        nif: clip(b.nif, 40) || null,
+        forma_juridica: clip(b.forma_juridica, 60) || null,
+        registo_comercial: clip(b.registo_comercial, 60) || null,
+        alvara: clip(b.alvara, 60) || null,
+        rep_legal_nome: clip(b.rep_legal_nome, 120) || null,
+        rep_legal_bi: clip(b.rep_legal_bi, 40) || null,
+        setor: clip(b.setor, 80) || null,
+        n_trabalhadores: intOrNull(b.n_trabalhadores),
+        endereco_fiscal: clip(b.endereco_fiscal, 200) || null,
+        iban: clip(b.iban, 40) || null,
+      });
+    }
 
     const URL = Deno.env.get("SUPABASE_URL");
     const KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");

@@ -245,6 +245,7 @@ function Icon({ n, size = 16 }: { n: string; size?: number }) {
     copy: <><rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" /></>,
     bell: <><path d="M6 9a6 6 0 0 1 12 0c0 5 2 7 2 7H4s2-2 2-7" /><path d="M10 21a2 2 0 0 0 4 0" /></>,
     x: <><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></>,
+    "arrow-left": <><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></>,
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", flexShrink: 0 }} aria-hidden="true">
@@ -466,6 +467,10 @@ function RegisterSheet({ place, onClose, onDone, onPlanos }: { place: Place; onC
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [done, setDone] = useState<string | null>(null);
+  const [perfil, setPerfil] = useState<"" | "informal" | "formal">("");
+  const [passo, setPasso] = useState(0);
+  const [f, setF] = useState<Record<string, string>>({ responsavel: "", telemovel: "", whatsapp: "", horario: "", desde: "", email: "", website: "", nif: "", forma_juridica: "", registo_comercial: "", alvara: "", rep_legal_nome: "", rep_legal_bi: "", setor: "", n_trabalhadores: "", endereco_fiscal: "", iban: "" });
+  const upd = (k: string, v: string) => setF((p) => ({ ...p, [k]: v }));
 
   const useGps = () => {
     if (!navigator.geolocation) { setErr("GPS indisponível neste navegador."); return; }
@@ -501,12 +506,13 @@ function RegisterSheet({ place, onClose, onDone, onPlanos }: { place: Place; onC
     const res = await registar({
       nome, tipo, categoria, descricao, preco: preco.trim() || null,
       cc: place.cc, prov: place.prov, mun: place.mun, zona: place.zona,
-      lat: coords.lat, lng: coords.lng,
+      lat: coords.lat, lng: coords.lng, perfil: perfil || "informal", ...f,
     });
     setBusy(false);
     if (res.ok) { setDone(res.code || ""); onDone("Registado! Já aparece nas pesquisas."); }
     else setErr(res.error || "Não foi possível registar.");
   };
+  const inp = (k: string, ph: string) => <input value={f[k]} onChange={(e) => upd(k, e.target.value)} placeholder={ph} style={{ width: "100%", background: INK, border: `1px solid ${LINE}`, borderRadius: 12, padding: "11px 13px", color: CREAM, outline: "none", fontSize: 14, marginBottom: 10 }} />;
 
   const field: React.CSSProperties = { width: "100%", background: INK, border: `1px solid ${LINE}`, borderRadius: 12, padding: "11px 13px", color: CREAM, outline: "none", fontSize: 14, marginBottom: 10 };
 
@@ -516,50 +522,78 @@ function RegisterSheet({ place, onClose, onDone, onPlanos }: { place: Place; onC
         <div style={{ width: 40, height: 4, borderRadius: 9, background: LINE, margin: "0 auto 16px" }} />
         {done === null ? (
           <>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 2 }}>Registar um negócio</div>
-            <div style={{ fontSize: 12.5, color: MUTE, marginBottom: 14 }}>Fica no índice da Yamioo com um código AfroLoc próprio.</div>
-
-            <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome (ex: Quitanda da Dona Rosa)" style={field} />
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-              {TIPOS.map(([id, lbl, ic]) => (
-                <button key={id} onClick={() => setTipo(id)} style={{ ...chipGhost, display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 11px", fontSize: 12.5, ...(tipo === id ? { background: GRAD, color: "#06110F", borderColor: "transparent" } : {}) }}><Icon n={ic} size={14} />{lbl}</button>
+            {passo === 0 && (<>
+              <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 2 }}>Registar um negócio</div>
+              <div style={{ fontSize: 12.5, color: MUTE, marginBottom: 16 }}>Um registo estruturado, com o teu código AFROLOC. Escolhe o perfil:</div>
+              {[{ id: "informal", t: "Informal / Ambulante", d: "Rápido · validação pela comunidade", ic: "pin" }, { id: "formal", t: "Empresa / Formal", d: "Completo (NIF, alvará…) · selo de empresa verificada", ic: "briefcase" }].map((o) => (
+                <button key={o.id} onClick={() => { setPerfil(o.id as any); setPasso(1); }} style={{ width: "100%", textAlign: "left", padding: "14px 15px", marginBottom: 10, borderRadius: 14, cursor: "pointer", border: `1px solid ${LINE}`, background: "rgba(255,255,255,0.02)", color: CREAM, display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ color: TEAL, display: "flex" }}><Icon n={o.ic} size={20} /></span>
+                  <span><span style={{ fontSize: 14.5, fontWeight: 700, display: "block" }}>{o.t}</span><span style={{ fontSize: 12, color: MUTE }}>{o.d}</span></span>
+                </button>
               ))}
-            </div>
-            <div style={{ position: "relative", marginBottom: 10 }}>
-              <input value={categoria}
-                onChange={(e) => { setCategoria(e.target.value); setCatOpen(true); }}
-                onFocus={() => setCatOpen(true)}
-                onBlur={() => setTimeout(() => setCatOpen(false), 150)}
-                placeholder="Atividade (escolhe ou escreve)" style={{ ...field, marginBottom: 0 }} />
-              {catOpen && (() => {
-                const lista = atividadesPara(tipo).filter((a) => a.toLowerCase().includes(categoria.trim().toLowerCase()));
-                if (!lista.length) return null;
-                return (
-                  <div style={{ position: "absolute", left: 0, right: 0, top: "calc(100% + 4px)", zIndex: 5, maxHeight: 190, overflowY: "auto", background: INK2, border: `1px solid ${LINE}`, borderRadius: 12, boxShadow: "0 14px 34px -14px rgba(0,0,0,0.7)" }}>
-                    {lista.map((a) => (
-                      <div key={a} onMouseDown={(e) => { e.preventDefault(); setCategoria(a); setCatOpen(false); }}
-                        style={{ padding: "9px 13px", fontSize: 13.5, color: CREAM, cursor: "pointer", borderBottom: `1px solid ${LINE}` }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>{a}</div>
-                    ))}
-                  </div>
-                );
-              })()}
-            </div>
-            <textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descrição curta (o que fazes / vendes)" rows={3} style={{ ...field, resize: "none", fontFamily: "inherit" }} />
-            <input value={preco} onChange={(e) => setPreco(e.target.value)} placeholder={`Preço (opcional, ex: 500 ${place.curr})`} style={field} />
+              <button onClick={onClose} style={{ ...linkBtn, marginTop: 6 }}>Cancelar</button>
+            </>)}
 
-            <button onClick={useGps} style={{ ...chipGhost, width: "100%", padding: "11px", marginBottom: 6, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, ...(gps === "on" ? { borderColor: TEAL, color: TEAL } : {}) }}>
-              <Icon n={gps === "on" ? "check" : "pin"} size={15} />
-              {gps === "locating" ? "A localizar…" : gps === "on" ? "A usar o teu GPS" : `Usar o meu GPS (ou fica em ${place.bairro})`}
-            </button>
-            <div style={{ fontSize: 11.5, color: MUTE, marginBottom: 12 }}>Local: {place.flag} {place.country} › {place.city} › {place.bairro}</div>
+            {passo === 1 && (<>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                <button onClick={() => setPasso(0)} style={{ ...iconBtn, display: "grid", placeItems: "center" }}><Icon n="arrow-left" size={16} /></button>
+                <div><div style={{ fontSize: 15.5, fontWeight: 700 }}>Dados do negócio</div><div style={{ fontSize: 11.5, color: MUTE }}>{perfil === "formal" ? "Empresa · passo 1 de 2" : "Informal · passo único"}</div></div>
+              </div>
+              <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome (ex: Quitanda da Dona Rosa)" style={field} />
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+                {TIPOS.map(([id, lbl, ic]) => (
+                  <button key={id} onClick={() => setTipo(id)} style={{ ...chipGhost, display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 11px", fontSize: 12.5, ...(tipo === id ? { background: GRAD, color: "#06110F", borderColor: "transparent" } : {}) }}><Icon n={ic} size={14} />{lbl}</button>
+                ))}
+              </div>
+              <div style={{ position: "relative", marginBottom: 10 }}>
+                <input value={categoria} onChange={(e) => { setCategoria(e.target.value); setCatOpen(true); }} onFocus={() => setCatOpen(true)} onBlur={() => setTimeout(() => setCatOpen(false), 150)} placeholder="Atividade (escolhe ou escreve)" style={{ ...field, marginBottom: 0 }} />
+                {catOpen && (() => {
+                  const lista = atividadesPara(tipo).filter((a) => a.toLowerCase().includes(categoria.trim().toLowerCase()));
+                  if (!lista.length) return null;
+                  return (
+                    <div style={{ position: "absolute", left: 0, right: 0, top: "calc(100% + 4px)", zIndex: 5, maxHeight: 190, overflowY: "auto", background: INK2, border: `1px solid ${LINE}`, borderRadius: 12, boxShadow: "0 14px 34px -14px rgba(0,0,0,0.7)" }}>
+                      {lista.map((a) => (
+                        <div key={a} onMouseDown={(e) => { e.preventDefault(); setCategoria(a); setCatOpen(false); }} style={{ padding: "9px 13px", fontSize: 13.5, color: CREAM, cursor: "pointer", borderBottom: `1px solid ${LINE}` }} onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>{a}</div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+              <textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descrição curta (o que fazes / vendes)" rows={2} style={{ ...field, resize: "none", fontFamily: "inherit" }} />
+              {inp("responsavel", "Responsável / dono (nome)")}
+              <div style={{ display: "flex", gap: 8 }}><div style={{ flex: 1 }}>{inp("telemovel", "Telemóvel")}</div><div style={{ flex: 1 }}>{inp("whatsapp", "WhatsApp")}</div></div>
+              {inp("horario", "Horário (ex: Seg–Sáb 8h–18h)")}
+              {inp("desde", "Desde (ano, ex: 2019)")}
+              <input value={preco} onChange={(e) => setPreco(e.target.value)} placeholder={`Preço (opcional, ex: 500 ${place.curr})`} style={field} />
+              <button onClick={useGps} style={{ ...chipGhost, width: "100%", padding: "11px", marginBottom: 6, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, ...(gps === "on" ? { borderColor: TEAL, color: TEAL } : {}) }}>
+                <Icon n={gps === "on" ? "check" : "pin"} size={15} />{gps === "locating" ? "A localizar…" : gps === "on" ? "A usar o teu GPS" : `Usar o meu GPS (ou fica em ${place.bairro})`}
+              </button>
+              <div style={{ fontSize: 11.5, color: MUTE, marginBottom: 12 }}>Local: {place.flag} {place.country} › {place.city} › {place.bairro}</div>
+              {err && <div style={{ color: "#FF8A8A", fontSize: 12.5, marginBottom: 10 }}>{err}</div>}
+              {perfil === "formal"
+                ? <button onClick={() => { if (!nome.trim()) { setErr("Indica o nome."); return; } setErr(""); setPasso(2); }} style={{ ...goBtn, background: GRAD, width: "100%", padding: 13, fontSize: 15 }}>Continuar →</button>
+                : <button onClick={submit} disabled={busy} style={{ ...goBtn, background: GRAD, width: "100%", padding: 13, fontSize: 15, opacity: busy ? 0.6 : 1 }}>{busy ? "A registar…" : "Registar"}</button>}
+            </>)}
 
-            {err && <div style={{ color: "#FF8A8A", fontSize: 12.5, marginBottom: 10 }}>{err}</div>}
-            <button onClick={submit} disabled={busy} style={{ ...goBtn, background: GRAD, width: "100%", padding: 13, fontSize: 15, opacity: busy ? 0.6 : 1, cursor: busy ? "default" : "pointer" }}>
-              {busy ? "A registar…" : "Registar"}
-            </button>
-            <button onClick={onClose} style={{ ...linkBtn, marginTop: 10 }}>Cancelar</button>
+            {passo === 2 && (<>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                <button onClick={() => setPasso(1)} style={{ ...iconBtn, display: "grid", placeItems: "center" }}><Icon n="arrow-left" size={16} /></button>
+                <div><div style={{ fontSize: 15.5, fontWeight: 700 }}>Dados formais</div><div style={{ fontSize: 11.5, color: MUTE }}>Empresa · passo 2 de 2</div></div>
+              </div>
+              {inp("nif", "NIF / Nº de contribuinte")}
+              {inp("forma_juridica", "Forma jurídica (ENI, Lda, SA, Cooperativa)")}
+              {inp("registo_comercial", "Nº de registo comercial / certidão")}
+              {inp("alvara", "Alvará / licença comercial")}
+              <div style={{ display: "flex", gap: 8 }}><div style={{ flex: 1 }}>{inp("rep_legal_nome", "Representante (nome)")}</div><div style={{ flex: 1 }}>{inp("rep_legal_bi", "BI do representante")}</div></div>
+              <div style={{ display: "flex", gap: 8 }}><div style={{ flex: 2 }}>{inp("setor", "Setor (CAE)")}</div><div style={{ flex: 1 }}>{inp("n_trabalhadores", "Nº trab.")}</div></div>
+              {inp("endereco_fiscal", "Endereço fiscal")}
+              {inp("email", "Email")}
+              {inp("website", "Website / redes sociais")}
+              {inp("iban", "IBAN (opcional)")}
+              <div style={{ fontSize: 11, color: MUTE, background: "rgba(255,255,255,0.03)", border: `1px solid ${LINE}`, borderRadius: 10, padding: "9px 11px", marginBottom: 12, lineHeight: 1.5 }}>Os <b style={{ color: CREAM }}>documentos</b> (certidão comercial, alvará, BI) serão pedidos a seguir para emitir o selo <b style={{ color: TEAL }}>Empresa verificada</b>.</div>
+              {err && <div style={{ color: "#FF8A8A", fontSize: 12.5, marginBottom: 10 }}>{err}</div>}
+              <button onClick={submit} disabled={busy} style={{ ...goBtn, background: GRAD, width: "100%", padding: 13, fontSize: 15, opacity: busy ? 0.6 : 1 }}>{busy ? "A registar…" : "Registar empresa"}</button>
+            </>)}
           </>
         ) : (
           <div style={{ textAlign: "center", padding: "6px 4px 4px" }}>
