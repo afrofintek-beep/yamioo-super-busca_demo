@@ -88,6 +88,7 @@ export default function App() {
   };
 
   const copy = (t: string) => { try { navigator.clipboard?.writeText(t); } catch {} };
+  const clearSearch = () => { setQuery(""); setResults(null); setMeta(null); setChip("todos"); };
   const shown = results ? (chip === "todos" ? results : results.filter((r) => r.tipo === chip)) : null;
   // Sugestões que GANHAM — só termos com resultados reais no índice (arranque a frio).
   const suggestions = ["banco", "farmácia", "restaurante", "mercado"];
@@ -99,7 +100,7 @@ export default function App() {
 
         <div style={{ position: "relative", padding: "22px 20px 120px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-            <Wordmark />
+            <button onClick={clearSearch} title="Início" style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}><Wordmark /></button>
             <button onClick={() => setSheet(true)} style={pill}>
               <span style={{ width: 7, height: 7, borderRadius: 9, background: TEAL, boxShadow: `0 0 10px ${TEAL}`, animation: "ping 2.4s ease-in-out infinite" }} />
               <span style={{ fontWeight: 600 }}>{place.flag} {place.country}</span>
@@ -120,7 +121,8 @@ export default function App() {
           <div style={{ borderRadius: 18, padding: 1.5, background: GRAD, boxShadow: "0 10px 30px -20px rgba(255,122,26,0.35)" }}>
             <div style={{ background: INK2, borderRadius: 16.5, padding: "13px 14px", display: "flex", alignItems: "center", gap: 10 }}>
               <span style={{ color: MUTE, display: "flex", opacity: 0.8 }}><Icon n="search" size={18} /></span>
-              <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") search(); }} placeholder={PLACEHOLDERS[phIdx]} style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: CREAM, fontSize: 15.5 }} />
+              <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") search(); if (e.key === "Escape") clearSearch(); }} placeholder={PLACEHOLDERS[phIdx]} style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: CREAM, fontSize: 15.5 }} />
+              {(query || results) && <button onClick={clearSearch} title="Limpar" style={{ ...iconBtn, display: "grid", placeItems: "center", color: MUTE }}><Icon n="x" size={16} /></button>}
               <button onClick={voice} title="Pesquisar por voz" style={{ ...iconBtn, display: "grid", placeItems: "center" }}><Icon n="mic" size={17} /></button>
               <button onClick={() => search()} style={{ ...goBtn, background: GRAD }}>Buscar</button>
             </div>
@@ -237,6 +239,7 @@ function Icon({ n, size = 16 }: { n: string; size?: number }) {
     download: <><path d="M12 3v12" /><polyline points="7 10 12 15 17 10" /><line x1="5" y1="21" x2="19" y2="21" /></>,
     copy: <><rect x="9" y="9" width="12" height="12" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" /></>,
     bell: <><path d="M6 9a6 6 0 0 1 12 0c0 5 2 7 2 7H4s2-2 2-7" /><path d="M10 21a2 2 0 0 0 4 0" /></>,
+    x: <><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></>,
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", flexShrink: 0 }} aria-hidden="true">
