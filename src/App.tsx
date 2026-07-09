@@ -51,6 +51,7 @@ export default function App() {
   const [stage, setStage] = useState(0);
   const [chip, setChip] = useState("todos");
   const [vista, setVista] = useState<"lista" | "mapa">("lista");
+  const [mapaPonto, setMapaPonto] = useState<Result | null>(null);
   const [sheet, setSheet] = useState(false);
   const [reg, setReg] = useState(false);
   const [planos, setPlanos] = useState<{ nome: string; code: string } | null>(null);
@@ -196,7 +197,7 @@ export default function App() {
                 {vista === "mapa" && shown && shown.length > 0
                   ? <MapaResultados resultados={shown} />
                   : <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
-                      {shown && shown.map((r, i) => <ResultCard key={r.code + i} r={r} onShare={() => { copy(r.code); try { window.location.href = `sms:?&body=${encodeURIComponent(`${r.nome} — AfroLoc: ${r.code}`)}`; } catch {} flash("Código copiado — a abrir SMS no telemóvel."); }} />)}
+                      {shown && shown.map((r, i) => <ResultCard key={r.code + i} r={r} onMap={() => setMapaPonto(r)} onShare={() => { copy(r.code); try { window.location.href = `sms:?&body=${encodeURIComponent(`${r.nome} — AfroLoc: ${r.code}`)}`; } catch {} flash("Código copiado — a abrir SMS no telemóvel."); }} />)}
                     </div>}
                 {results.length > 0 && (
                   <p style={{ textAlign: "center", color: MUTE, fontSize: 11.5, marginTop: 18, lineHeight: 1.6 }}>
@@ -219,6 +220,7 @@ export default function App() {
         {sheet && <Sheet place={place} onClose={() => setSheet(false)} onPick={(ci, bi) => { setPlace(makePlace(ci, bi)); setSheet(false); setResults(null); }} />}
         {reg && <RegisterSheet place={place} onClose={() => setReg(false)} onDone={(m) => { flash(m); contarEntidades().then(setIdx); }} onPlanos={(nome, code) => { setReg(false); setPlanos({ nome, code }); }} />}
         {planos && <PlanosSheet dados={planos} onClose={() => setPlanos(null)} onToast={flash} />}
+        {mapaPonto && <MapaPonto r={mapaPonto} onClose={() => setMapaPonto(null)} />}
         {onboard && <Onboarding place={place} code={pin.code} real={pin.real} onGeo={(c) => setGeo(c)} onClose={() => setOnboard(false)} />}
         {toast && <div style={toastStyle}>{toast}</div>}
       </div>
@@ -305,6 +307,45 @@ function Painel() {
   );
 }
 
+function MapaPonto({ r, onClose }: { r: Result; onClose: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const c = decodeAfroloc(r.code);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !c) return;
+    const map = L.map(el, { attributionControl: false });
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { maxZoom: 19 }).addTo(map);
+    map.setView([c.lat, c.lng], 16);
+    const col = r.verificado ? "#FF6B35" : "#19C6AC";
+    L.circleMarker([c.lat, c.lng], { radius: 11, color: col, fillColor: col, fillOpacity: 0.9, weight: 3 }).addTo(map).bindPopup(`<b>${r.nome}</b>`).openPopup();
+    const t = setTimeout(() => map.invalidateSize(), 120);
+    return () => { clearTimeout(t); map.remove(); };
+  }, []);
+  return (
+    <div onClick={onClose} style={{ ...overlay, zIndex: 55 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", left: 0, right: 0, bottom: 0, background: INK2, borderTopLeftRadius: 22, borderTopRightRadius: 22, border: `1px solid ${LINE}`, padding: 16, animation: "slideup .28s ease" }}>
+        <div style={{ width: 40, height: 4, borderRadius: 9, background: LINE, margin: "0 auto 14px" }} />
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 15.5, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.nome}</div>
+            <div style={{ fontSize: 12, color: MUTE }}>{r.categoria} · {r.dist.toFixed(1)} km</div>
+          </div>
+          <button onClick={onClose} style={{ ...iconBtn, marginLeft: "auto", display: "grid", placeItems: "center" }}><Icon n="x" size={16} /></button>
+        </div>
+        {c ? (
+          <>
+            <div ref={ref} style={{ height: 360, borderRadius: 14, overflow: "hidden", border: `1px solid ${LINE}`, background: "#0c1420" }} />
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
+              <span style={{ flex: 1, minWidth: 0, fontFamily: "ui-monospace, monospace", fontSize: 11.5, color: TEAL, wordBreak: "break-all" }}>{r.code}</span>
+              <a href={`https://www.google.com/maps?q=${c.lat},${c.lng}`} target="_blank" rel="noreferrer" style={{ ...miniBtn, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 5 }}><Icon n="external-link" size={12} />Google Maps</a>
+            </div>
+          </>
+        ) : <div style={{ textAlign: "center", color: MUTE, padding: "34px 0", fontSize: 14 }}>Este ponto não tem coordenada descodificável.</div>}
+      </div>
+    </div>
+  );
+}
+
 function MapaResultados({ resultados }: { resultados: Result[] }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -371,6 +412,7 @@ function Icon({ n, size = 16 }: { n: string; size?: number }) {
     file: <><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><polyline points="14 3 14 8 19 8" /></>,
     lock: <><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></>,
     refresh: <><path d="M21 12a9 9 0 1 1-3-6.7" /><polyline points="21 3 21 9 15 9" /></>,
+    "external-link": <><path d="M15 3h6v6" /><path d="M10 14 21 3" /><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></>,
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", flexShrink: 0 }} aria-hidden="true">
@@ -390,7 +432,7 @@ function Loading({ stage }: { stage: string }) {
   );
 }
 
-function ResultCard({ r, onShare }: { r: Result; onShare: () => void }) {
+function ResultCard({ r, onMap, onShare }: { r: Result; onMap: () => void; onShare: () => void }) {
   const tipo = TIPO_LABEL[r.tipo] || "Local";
   const ico = (VERTICALS.find((v) => v.id === r.tipo) || ({} as any)).icon || "pin";
   return (
@@ -419,8 +461,11 @@ function ResultCard({ r, onShare }: { r: Result; onShare: () => void }) {
             {r.preco && <Signal label={r.preco} icon="tag" tone="price" />}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 11, background: "rgba(25,198,172,0.07)", border: "1px solid rgba(25,198,172,0.22)", borderRadius: 10, padding: "7px 10px" }}>
-            <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11.5, color: TEAL, letterSpacing: 0.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.code}</span>
-            <button onClick={onShare} style={{ marginLeft: "auto", ...miniBtn }}>SMS ⇪</button>
+            <button onClick={onMap} title="Ver no mapa" style={{ flex: 1, minWidth: 0, display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: "none", padding: 0, cursor: "pointer", color: TEAL }}>
+              <Icon n="pin" size={13} />
+              <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11.5, letterSpacing: 0.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.code}</span>
+            </button>
+            <button onClick={onShare} style={{ ...miniBtn }}>SMS ⇪</button>
           </div>
         </div>
       </div>
